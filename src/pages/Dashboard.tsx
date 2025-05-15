@@ -13,7 +13,7 @@ export default function Dashboard() {
   const { stats, monthlyData, formatCurrency } = useDashboardData();
 
   return (
-    <div>
+    <div className="animate-in fade-in duration-500">
       <h1 className="text-2xl font-bold mb-4">{t("dashboard.welcome")}</h1>
       <p className="text-muted-foreground mb-6">{t("dashboard.summary")}</p>
 

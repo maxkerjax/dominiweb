@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
 import { useAuth } from "@/providers/AuthProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -18,13 +17,17 @@ import {
 import Sidebar from "./Sidebar";
 import { Bell, Menu, X } from "lucide-react";
 
-export default function Layout() {
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!user) {
-    return <Outlet />;
+    return <>{children}</>;
   }
 
   return (
@@ -131,7 +134,7 @@ export default function Layout() {
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-background">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <Outlet />
+              {children}
             </div>
           </div>
         </main>

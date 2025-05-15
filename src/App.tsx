@@ -19,7 +19,7 @@ import { useAuth } from "./providers/AuthProvider";
 
 const queryClient = new QueryClient();
 
-// Updated ProtectedRoute component with proper typing for React children
+// Protected route component that wraps protected pages
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 

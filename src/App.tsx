@@ -1,4 +1,5 @@
 
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import RoomsPage from "./pages/RoomsPage";
 import RepairsPage from "./pages/RepairsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
+import TenantsPage from "./pages/TenantsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { useAuth } from "./providers/AuthProvider";
@@ -67,6 +69,16 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/tenants"
+                  element={
+                    <Layout>
+                      <ProtectedRoute>
+                        <TenantsPage />
+                      </ProtectedRoute>
+                    </Layout>
+                  }
+                />
+                <Route
                   path="/repairs"
                   element={
                     <Layout>
@@ -97,3 +109,4 @@ const App = () => (
 );
 
 export default App;
+

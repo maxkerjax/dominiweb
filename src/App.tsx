@@ -1,5 +1,4 @@
 
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import RoomsPage from "./pages/RoomsPage";
 import RepairsPage from "./pages/RepairsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import TenantsPage from "./pages/TenantsPage";
+import StaffPage from "./pages/StaffPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { useAuth } from "./providers/AuthProvider";
@@ -79,6 +79,16 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/staff"
+                  element={
+                    <Layout>
+                      <ProtectedRoute>
+                        <StaffPage />
+                      </ProtectedRoute>
+                    </Layout>
+                  }
+                />
+                <Route
                   path="/repairs"
                   element={
                     <Layout>
@@ -109,4 +119,3 @@ const App = () => (
 );
 
 export default App;
-

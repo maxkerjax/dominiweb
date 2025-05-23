@@ -1,5 +1,3 @@
-
-
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/providers/LanguageProvider";
@@ -182,4 +180,3 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     </nav>
   );
 }
-

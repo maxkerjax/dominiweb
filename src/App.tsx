@@ -16,6 +16,7 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import TenantsPage from "./pages/TenantsPage";
 import StaffPage from "./pages/StaffPage";
 import BillingPage from "./pages/BillingPage";
+import ReportsPage from "./pages/ReportsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { useAuth } from "./providers/AuthProvider";
@@ -115,6 +116,16 @@ const App = () => (
                     <Layout>
                       <ProtectedRoute>
                         <AnnouncementsPage />
+                      </ProtectedRoute>
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <Layout>
+                      <ProtectedRoute>
+                        <ReportsPage />
                       </ProtectedRoute>
                     </Layout>
                   }

@@ -34,6 +34,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  TooltipProps,
 } from "recharts";
 import {
   Download,
@@ -45,8 +46,25 @@ import {
   Calendar,
 } from "lucide-react";
 
+// Add type definitions for chart data
+type MonthlyOccupancyData = {
+  month: string;
+  occupancy: number;
+};
+
+type MonthlyRevenueData = {
+  month: string;
+  revenue: number;
+};
+
+type RoomTypeData = {
+  name: string;
+  value: number;
+  color: string;
+};
+
 // Mock report data
-const monthlyOccupancyData = [
+const monthlyOccupancyData: MonthlyOccupancyData[] = [
   { month: "Jan", occupancy: 85 },
   { month: "Feb", occupancy: 88 },
   { month: "Mar", occupancy: 90 },
@@ -61,7 +79,7 @@ const monthlyOccupancyData = [
   { month: "Dec", occupancy: 89 },
 ];
 
-const monthlyRevenueData = [
+const monthlyRevenueData: MonthlyRevenueData[] = [
   { month: "Jan", revenue: 42500 },
   { month: "Feb", revenue: 44000 },
   { month: "Mar", revenue: 45000 },
@@ -76,7 +94,7 @@ const monthlyRevenueData = [
   { month: "Dec", revenue: 44500 },
 ];
 
-const roomTypesData = [
+const roomTypesData: RoomTypeData[] = [
   { name: "Standard Single", value: 35, color: "#3b82f6" },
   { name: "Standard Double", value: 25, color: "#10b981" },
   { name: "Deluxe Single", value: 20, color: "#f59e0b" },
@@ -84,7 +102,7 @@ const roomTypesData = [
   { name: "Suite", value: 5, color: "#ec4899" },
 ];
 
-const repairTypesData = [
+const repairTypesData: RoomTypeData[] = [
   { name: "Plumbing", value: 38, color: "#3b82f6" },
   { name: "Electrical", value: 25, color: "#10b981" },
   { name: "Furniture", value: 15, color: "#f59e0b" },
@@ -92,7 +110,14 @@ const repairTypesData = [
   { name: "Other", value: 10, color: "#ec4899" },
 ];
 
-const availableReports = [
+interface ReportItem {
+  id: string;
+  title: string;
+  icon: React.ElementType;
+  description: string;
+}
+
+const availableReports: ReportItem[] = [
   {
     id: "occupancy",
     title: "Occupancy Trends",
@@ -124,6 +149,19 @@ const availableReports = [
     description: "Dormitory event participation metrics"
   },
 ];
+
+// Create custom tooltip component
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border border-border p-2 rounded-md shadow-md">
+        <p className="font-medium">{`${label}`}</p>
+        <p className="text-primary">{`${payload[0].name}: ${payload[0].value}`}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 const ReportsPage = () => {
   const { t } = useLanguage();
@@ -178,14 +216,7 @@ const ReportsPage = () => {
                       tick={{ fill: "var(--foreground)" }}
                       tickFormatter={(value) => `${value}%`}
                     />
-                    <Tooltip 
-                      content={(props) => (
-                        <ChartTooltipContent
-                          {...props}
-                          formatter={(value) => `${value}%`}
-                        />
-                      )}
-                    />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Bar
                       dataKey="occupancy"
@@ -236,14 +267,7 @@ const ReportsPage = () => {
                       tick={{ fill: "var(--foreground)" }}
                       tickFormatter={(value) => formatCurrency(value).split('.')[0]}
                     />
-                    <Tooltip
-                      content={(props) => (
-                        <ChartTooltipContent
-                          {...props}
-                          formatter={(value) => formatCurrency(value)}
-                        />
-                      )}
-                    />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Bar
                       dataKey="revenue"
@@ -280,10 +304,7 @@ const ReportsPage = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value) => `${value} rooms`}
-                    labelFormatter={(label) => `Room Type: ${label}`}
-                  />
+                  <Tooltip formatter={(value) => [`${value} rooms`, 'Rooms']} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
@@ -313,10 +334,7 @@ const ReportsPage = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value) => `${value} requests`}
-                    labelFormatter={(label) => `Request Type: ${label}`}
-                  />
+                  <Tooltip formatter={(value) => [`${value} requests`, 'Requests']} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>

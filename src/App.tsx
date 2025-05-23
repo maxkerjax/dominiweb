@@ -15,6 +15,7 @@ import RepairsPage from "./pages/RepairsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import TenantsPage from "./pages/TenantsPage";
 import StaffPage from "./pages/StaffPage";
+import BillingPage from "./pages/BillingPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { useAuth } from "./providers/AuthProvider";
@@ -84,6 +85,16 @@ const App = () => (
                     <Layout>
                       <ProtectedRoute>
                         <StaffPage />
+                      </ProtectedRoute>
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/billing"
+                  element={
+                    <Layout>
+                      <ProtectedRoute>
+                        <BillingPage />
                       </ProtectedRoute>
                     </Layout>
                   }

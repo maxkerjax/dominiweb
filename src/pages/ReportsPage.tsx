@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { 
   Card, 
@@ -45,6 +44,7 @@ import {
   Wrench,
   Calendar,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Add type definitions for chart data
 type MonthlyOccupancyData = {
@@ -63,7 +63,14 @@ type RoomTypeData = {
   color: string;
 };
 
-// Mock report data
+interface ReportItem {
+  id: string;
+  title: string;
+  icon: React.ElementType;
+  description: string;
+}
+
+// Mock report data (will be replaced with Supabase data)
 const monthlyOccupancyData: MonthlyOccupancyData[] = [
   { month: "Jan", occupancy: 85 },
   { month: "Feb", occupancy: 88 },
@@ -109,13 +116,6 @@ const repairTypesData: RoomTypeData[] = [
   { name: "HVAC", value: 12, color: "#6366f1" },
   { name: "Other", value: 10, color: "#ec4899" },
 ];
-
-interface ReportItem {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  description: string;
-}
 
 const availableReports: ReportItem[] = [
   {
@@ -167,7 +167,79 @@ const ReportsPage = () => {
   const { t } = useLanguage();
   const [selectedReport, setSelectedReport] = useState("occupancy");
   const [timeFrame, setTimeFrame] = useState("year");
+  const [roomTypeDistribution, setRoomTypeDistribution] = useState<RoomTypeData[]>(roomTypesData);
+  const [repairTypeDistribution, setRepairTypeDistribution] = useState<RoomTypeData[]>(repairTypesData);
+  const [isLoading, setIsLoading] = useState(false);
   
+  useEffect(() => {
+    const fetchRoomTypeDistribution = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rooms')
+          .select('room_type, count(*)')
+          .group('room_type');
+        
+        if (error) {
+          console.error('Error fetching room types:', error);
+          return;
+        }
+
+        if (data && data.length) {
+          const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
+          
+          const formattedData: RoomTypeData[] = data.map((item, index) => ({
+            name: item.room_type,
+            value: parseInt(item.count),
+            color: colors[index % colors.length]
+          }));
+          
+          setRoomTypeDistribution(formattedData);
+        }
+      } catch (err) {
+        console.error('Error in fetchRoomTypeDistribution:', err);
+      }
+    };
+
+    const fetchRepairTypeDistribution = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('repairs')
+          .select('repair_type, count(*)')
+          .group('repair_type');
+        
+        if (error) {
+          console.error('Error fetching repair types:', error);
+          return;
+        }
+
+        if (data && data.length) {
+          const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
+          
+          const formattedData: RoomTypeData[] = data.map((item, index) => ({
+            name: item.repair_type,
+            value: parseInt(item.count),
+            color: colors[index % colors.length]
+          }));
+          
+          setRepairTypeDistribution(formattedData);
+        } else {
+          // If no data, keep the mock data
+          console.log('No repair data found, using mock data');
+        }
+      } catch (err) {
+        console.error('Error in fetchRepairTypeDistribution:', err);
+      }
+    };
+
+    // When the report is selected, fetch the appropriate data
+    if (selectedReport === 'rooms') {
+      fetchRoomTypeDistribution();
+    } else if (selectedReport === 'repairs') {
+      fetchRepairTypeDistribution();
+    }
+
+  }, [selectedReport]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -291,7 +363,7 @@ const ReportsPage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={roomTypesData}
+                    data={roomTypeDistribution}
                     cx="50%"
                     cy="50%"
                     labelLine={true}
@@ -300,7 +372,7 @@ const ReportsPage = () => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {roomTypesData.map((entry, index) => (
+                    {roomTypeDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -321,7 +393,7 @@ const ReportsPage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={repairTypesData}
+                    data={repairTypeDistribution}
                     cx="50%"
                     cy="50%"
                     labelLine={true}
@@ -330,7 +402,7 @@ const ReportsPage = () => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {repairTypesData.map((entry, index) => (
+                    {repairTypeDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>

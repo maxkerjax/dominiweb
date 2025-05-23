@@ -9,7 +9,241 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      announcements: {
+        Row: {
+          content: string
+          created_at: string | null
+          expiry_date: string | null
+          id: string
+          publish_date: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          publish_date?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          publish_date?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      occupancy: {
+        Row: {
+          check_in_date: string
+          check_out_date: string | null
+          created_at: string | null
+          id: string
+          is_current: boolean | null
+          room_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          check_in_date: string
+          check_out_date?: string | null
+          created_at?: string | null
+          id?: string
+          is_current?: boolean | null
+          room_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          check_in_date?: string
+          check_out_date?: string | null
+          created_at?: string | null
+          id?: string
+          is_current?: boolean | null
+          room_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "occupancy_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "occupancy_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          occupancy_id: string
+          payment_date: string
+          payment_method: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          occupancy_id: string
+          payment_date: string
+          payment_method: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          occupancy_id?: string
+          payment_date?: string
+          payment_method?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_occupancy_id_fkey"
+            columns: ["occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repairs: {
+        Row: {
+          completed_date: string | null
+          created_at: string | null
+          description: string
+          id: string
+          repair_type: string
+          reported_date: string
+          room_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_date?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          repair_type: string
+          reported_date?: string
+          room_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_date?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          repair_type?: string
+          reported_date?: string
+          room_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repairs_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          capacity: number
+          created_at: string | null
+          floor: number
+          id: string
+          price: number
+          room_number: string
+          room_type: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          capacity: number
+          created_at?: string | null
+          floor: number
+          id?: string
+          price: number
+          room_number: string
+          room_type: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number
+          created_at?: string | null
+          floor?: number
+          id?: string
+          price?: number
+          room_number?: string
+          room_type?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          emergency_contact: string | null
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          emergency_contact?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          emergency_contact?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

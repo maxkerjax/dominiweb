@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -38,98 +38,160 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DoorClosed, MoreVertical, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type Room = {
-  id: number;
-  roomNumber: string;
-  type: "standard" | "deluxe" | "suite";
-  status: "vacant" | "occupied" | "maintenance";
-  rent: number;
-  size: string;
+  id: string;
+  room_number: string;
+  room_type: string;
+  status: string;
+  price: number;
+  capacity: number;
+  floor: number;
 };
 
 export default function RoomsPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [rooms, setRooms] = useState<Room[]>([
-    {
-      id: 1,
-      roomNumber: "101",
-      type: "standard",
-      status: "occupied",
-      rent: 3500,
-      size: "20 sq.m.",
-    },
-    {
-      id: 2,
-      roomNumber: "102",
-      type: "standard",
-      status: "vacant",
-      rent: 3500,
-      size: "20 sq.m.",
-    },
-    {
-      id: 3,
-      roomNumber: "201",
-      type: "deluxe",
-      status: "occupied",
-      rent: 4500,
-      size: "30 sq.m.",
-    },
-    {
-      id: 4,
-      roomNumber: "202",
-      type: "deluxe",
-      status: "maintenance",
-      rent: 4500,
-      size: "30 sq.m.",
-    },
-    {
-      id: 5,
-      roomNumber: "301",
-      type: "suite",
-      status: "occupied",
-      rent: 5500,
-      size: "40 sq.m.",
-    },
-    {
-      id: 6,
-      roomNumber: "302",
-      type: "suite",
-      status: "vacant",
-      rent: 5500,
-      size: "40 sq.m.",
-    },
-  ]);
-  const [newRoom, setNewRoom] = useState<Omit<Room, "id">>({
-    roomNumber: "",
-    type: "standard",
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newRoom, setNewRoom] = useState({
+    room_number: "",
+    room_type: "Standard Single",
     status: "vacant",
-    rent: 3500,
-    size: "20",
+    price: 3500,
+    capacity: 1,
+    floor: 1,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
 
-  const handleAddRoom = () => {
-    const newId = Math.max(...rooms.map((room) => room.id), 0) + 1;
-    setRooms([...rooms, { ...newRoom, id: newId }]);
-    setDialogOpen(false);
-    toast({
-      title: "Room Added",
-      description: `Room ${newRoom.roomNumber} has been added successfully.`,
-    });
-    setNewRoom({
-      roomNumber: "",
-      type: "standard",
-      status: "vacant",
-      rent: 3500,
-      size: "20",
-    });
+  // Fetch rooms from Supabase
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .order('room_number', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching rooms:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch rooms data.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setRooms(data || []);
+    } catch (err) {
+      console.error('Error in fetchRooms:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Add new room to Supabase
+  const handleAddRoom = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .insert([{
+          room_number: newRoom.room_number,
+          room_type: newRoom.room_type,
+          status: newRoom.status,
+          price: newRoom.price,
+          capacity: newRoom.capacity,
+          floor: newRoom.floor,
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding room:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add room. Please check if room number already exists.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setRooms([...rooms, data]);
+      setDialogOpen(false);
+      toast({
+        title: "Room Added",
+        description: `Room ${newRoom.room_number} has been added successfully.`,
+      });
+      
+      // Reset form
+      setNewRoom({
+        room_number: "",
+        room_type: "Standard Single",
+        status: "vacant",
+        price: 3500,
+        capacity: 1,
+        floor: 1,
+      });
+    } catch (err) {
+      console.error('Error in handleAddRoom:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while adding the room.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Update room status in Supabase
+  const handleChangeRoomStatus = async (id: string, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating room status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update room status.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setRooms(rooms.map((room) => 
+        room.id === id ? { ...room, status } : room
+      ));
+      
+      toast({
+        title: "Room Status Updated",
+        description: `Room status has been updated to ${status}.`,
+      });
+    } catch (err) {
+      console.error('Error in handleChangeRoomStatus:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while updating room status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchRooms();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -144,25 +206,15 @@ export default function RoomsPage() {
     }
   };
 
-  const handleChangeRoomStatus = (id: number, status: Room["status"]) => {
-    setRooms(
-      rooms.map((room) => (room.id === id ? { ...room, status } : room))
-    );
-    toast({
-      title: "Room Status Updated",
-      description: `Room status has been updated to ${status}.`,
-    });
-  };
-
   const filteredRooms = rooms.filter((room) => {
-    const matchesSearch = room.roomNumber
+    const matchesSearch = room.room_number
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter
       ? room.status === statusFilter
       : true;
     const matchesType = typeFilter
-      ? room.type === typeFilter
+      ? room.room_type === typeFilter
       : true;
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -174,6 +226,17 @@ export default function RoomsPage() {
       minimumFractionDigits: 0,
     }).format(price);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading rooms...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -198,9 +261,9 @@ export default function RoomsPage() {
                   <label htmlFor="roomNumber">{t("rooms.number")}</label>
                   <Input
                     id="roomNumber"
-                    value={newRoom.roomNumber}
+                    value={newRoom.room_number}
                     onChange={(e) =>
-                      setNewRoom({ ...newRoom, roomNumber: e.target.value })
+                      setNewRoom({ ...newRoom, room_number: e.target.value })
                     }
                     placeholder="101"
                   />
@@ -208,18 +271,20 @@ export default function RoomsPage() {
                 <div className="space-y-2">
                   <label htmlFor="type">{t("rooms.type")}</label>
                   <Select
-                    value={newRoom.type}
-                    onValueChange={(value: any) =>
-                      setNewRoom({ ...newRoom, type: value })
+                    value={newRoom.room_type}
+                    onValueChange={(value) =>
+                      setNewRoom({ ...newRoom, room_type: value })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="deluxe">Deluxe</SelectItem>
-                      <SelectItem value="suite">Suite</SelectItem>
+                      <SelectItem value="Standard Single">Standard Single</SelectItem>
+                      <SelectItem value="Standard Double">Standard Double</SelectItem>
+                      <SelectItem value="Deluxe Single">Deluxe Single</SelectItem>
+                      <SelectItem value="Deluxe Double">Deluxe Double</SelectItem>
+                      <SelectItem value="Suite">Suite</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -227,7 +292,7 @@ export default function RoomsPage() {
                   <label htmlFor="status">{t("rooms.status")}</label>
                   <Select
                     value={newRoom.status}
-                    onValueChange={(value: any) =>
+                    onValueChange={(value) =>
                       setNewRoom({ ...newRoom, status: value })
                     }
                   >
@@ -242,33 +307,49 @@ export default function RoomsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="rent">{t("rooms.rent")}</label>
+                  <label htmlFor="price">{t("rooms.rent")}</label>
                   <Input
-                    id="rent"
+                    id="price"
                     type="number"
-                    value={newRoom.rent}
+                    value={newRoom.price}
                     onChange={(e) =>
                       setNewRoom({
                         ...newRoom,
-                        rent: Number(e.target.value),
+                        price: Number(e.target.value),
                       })
                     }
                     placeholder="3500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="size">{t("rooms.size")}</label>
-                  <div className="flex items-center">
-                    <Input
-                      id="size"
-                      value={newRoom.size}
-                      onChange={(e) =>
-                        setNewRoom({ ...newRoom, size: e.target.value })
-                      }
-                      placeholder="20"
-                    />
-                    <span className="ml-2">sq.m.</span>
-                  </div>
+                  <label htmlFor="capacity">Capacity</label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    value={newRoom.capacity}
+                    onChange={(e) =>
+                      setNewRoom({
+                        ...newRoom,
+                        capacity: Number(e.target.value),
+                      })
+                    }
+                    placeholder="1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="floor">Floor</label>
+                  <Input
+                    id="floor"
+                    type="number"
+                    value={newRoom.floor}
+                    onChange={(e) =>
+                      setNewRoom({
+                        ...newRoom,
+                        floor: Number(e.target.value),
+                      })
+                    }
+                    placeholder="1"
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -314,9 +395,11 @@ export default function RoomsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All Types</SelectItem>
-              <SelectItem value="standard">Standard</SelectItem>
-              <SelectItem value="deluxe">Deluxe</SelectItem>
-              <SelectItem value="suite">Suite</SelectItem>
+              <SelectItem value="Standard Single">Standard Single</SelectItem>
+              <SelectItem value="Standard Double">Standard Double</SelectItem>
+              <SelectItem value="Deluxe Single">Deluxe Single</SelectItem>
+              <SelectItem value="Deluxe Double">Deluxe Double</SelectItem>
+              <SelectItem value="Suite">Suite</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -331,7 +414,8 @@ export default function RoomsPage() {
               <TableHead>{t("rooms.type")}</TableHead>
               <TableHead>{t("rooms.status")}</TableHead>
               <TableHead>{t("rooms.rent")}</TableHead>
-              <TableHead>{t("rooms.size")}</TableHead>
+              <TableHead>Capacity</TableHead>
+              <TableHead>Floor</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -342,10 +426,10 @@ export default function RoomsPage() {
                   <TableCell className="font-medium">
                     <div className="flex items-center">
                       <DoorClosed className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {room.roomNumber}
+                      {room.room_number}
                     </div>
                   </TableCell>
-                  <TableCell className="capitalize">{room.type}</TableCell>
+                  <TableCell className="capitalize">{room.room_type}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(
@@ -355,8 +439,9 @@ export default function RoomsPage() {
                       {room.status}
                     </span>
                   </TableCell>
-                  <TableCell>{formatPrice(room.rent)}</TableCell>
-                  <TableCell>{room.size}</TableCell>
+                  <TableCell>{formatPrice(room.price)}</TableCell>
+                  <TableCell>{room.capacity}</TableCell>
+                  <TableCell>{room.floor}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -370,10 +455,9 @@ export default function RoomsPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => {
-                            // View room details
                             toast({
                               title: "View Room",
-                              description: `Viewing details for Room ${room.roomNumber}`,
+                              description: `Viewing details for Room ${room.room_number}`,
                             });
                           }}
                         >
@@ -383,10 +467,9 @@ export default function RoomsPage() {
                           <>
                             <DropdownMenuItem
                               onClick={() => {
-                                // Edit room
                                 toast({
                                   title: "Edit Room",
-                                  description: `Editing Room ${room.roomNumber}`,
+                                  description: `Editing Room ${room.room_number}`,
                                 });
                               }}
                             >
@@ -424,7 +507,7 @@ export default function RoomsPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4">
+                <TableCell colSpan={7} className="text-center py-4">
                   No rooms found. Try adjusting your search or filters.
                 </TableCell>
               </TableRow>

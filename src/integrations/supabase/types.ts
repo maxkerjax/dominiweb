@@ -39,6 +39,85 @@ export type Database = {
         }
         Relationships: []
       }
+      billing: {
+        Row: {
+          billing_month: string
+          created_at: string
+          due_date: string
+          electricity_cost: number
+          electricity_units: number
+          id: string
+          occupancy_id: string
+          paid_date: string | null
+          room_id: string
+          room_rent: number
+          status: string
+          tenant_id: string
+          total_amount: number
+          updated_at: string
+          water_cost: number
+          water_units: number
+        }
+        Insert: {
+          billing_month: string
+          created_at?: string
+          due_date: string
+          electricity_cost?: number
+          electricity_units?: number
+          id?: string
+          occupancy_id: string
+          paid_date?: string | null
+          room_id: string
+          room_rent?: number
+          status?: string
+          tenant_id: string
+          total_amount?: number
+          updated_at?: string
+          water_cost?: number
+          water_units?: number
+        }
+        Update: {
+          billing_month?: string
+          created_at?: string
+          due_date?: string
+          electricity_cost?: number
+          electricity_units?: number
+          id?: string
+          occupancy_id?: string
+          paid_date?: string | null
+          room_id?: string
+          room_rent?: number
+          status?: string
+          tenant_id?: string
+          total_amount?: number
+          updated_at?: string
+          water_cost?: number
+          water_units?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_occupancy_id_fkey"
+            columns: ["occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "occupancy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       occupancy: {
         Row: {
           check_in_date: string

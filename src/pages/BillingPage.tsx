@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { 
   Table, 
@@ -25,128 +25,210 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Receipt, Filter, Download } from "lucide-react";
+import { Receipt, Filter, Download, Plus } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import BillingCalculationDialog from "@/components/billing/BillingCalculationDialog";
+import BillingStatusBadge from "@/components/billing/BillingStatusBadge";
 
-// Mock billing data
-const mockBillings = [
-  {
-    id: 1,
-    invoiceNumber: "INV-2025-001",
-    tenant: "John Smith",
-    roomNumber: "A-101",
-    amount: 850.00,
-    status: "paid",
-    dueDate: "2025-04-15",
-    paidDate: "2025-04-10",
-  },
-  {
-    id: 2,
-    invoiceNumber: "INV-2025-002",
-    tenant: "Sarah Johnson",
-    roomNumber: "B-205",
-    amount: 950.00,
-    status: "pending",
-    dueDate: "2025-05-15",
-    paidDate: null,
-  },
-  {
-    id: 3,
-    invoiceNumber: "INV-2025-003",
-    tenant: "Michael Chen",
-    roomNumber: "C-310",
-    amount: 750.00,
-    status: "overdue",
-    dueDate: "2025-04-30",
-    paidDate: null,
-  },
-  {
-    id: 4,
-    invoiceNumber: "INV-2025-004",
-    tenant: "Emily Wilson",
-    roomNumber: "A-103",
-    amount: 850.00,
-    status: "paid",
-    dueDate: "2025-04-15",
-    paidDate: "2025-04-08",
-  },
-  {
-    id: 5,
-    invoiceNumber: "INV-2025-005",
-    tenant: "David Rodriguez",
-    roomNumber: "B-208",
-    amount: 950.00,
-    status: "pending",
-    dueDate: "2025-05-15",
-    paidDate: null,
-  },
-];
+interface BillingRecord {
+  id: string;
+  billing_month: string;
+  room_rent: number;
+  water_units: number;
+  water_cost: number;
+  electricity_units: number;
+  electricity_cost: number;
+  total_amount: number;
+  status: string;
+  due_date: string;
+  paid_date: string | null;
+  created_at: string;
+  rooms: {
+    room_number: string;
+  };
+  tenants: {
+    first_name: string;
+    last_name: string;
+  };
+}
 
 const BillingPage = () => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [billings, setBillings] = useState<BillingRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCalculationDialog, setShowCalculationDialog] = useState(false);
 
-  const filteredBillings = mockBillings.filter(billing => {
+  useEffect(() => {
+    fetchBillings();
+  }, []);
+
+  const fetchBillings = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('billing')
+        .select(`
+          id,
+          billing_month,
+          room_rent,
+          water_units,
+          water_cost,
+          electricity_units,
+          electricity_cost,
+          total_amount,
+          status,
+          due_date,
+          paid_date,
+          created_at,
+          rooms (
+            room_number
+          ),
+          tenants (
+            first_name,
+            last_name
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching billings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch billing records",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setBillings(data || []);
+    } catch (err) {
+      console.error('Error in fetchBillings:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredBillings = billings.filter(billing => {
     const matchesSearch = 
-      billing.tenant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      billing.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      billing.roomNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      billing.tenants.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      billing.tenants.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      billing.rooms.room_number.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || billing.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
-  
-  const getStatusClass = (status: string) => {
-    switch(status) {
-      case "paid":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "overdue":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('th-TH', {
+      style: 'currency',
+      currency: 'THB',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH');
+  };
+
+  const formatMonth = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', { 
+      year: 'numeric', 
+      month: 'long' 
+    });
+  };
+
+  const handleMarkAsPaid = async (billingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('billing')
+        .update({ 
+          status: 'paid',
+          paid_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('id', billingId);
+
+      if (error) {
+        console.error('Error updating billing status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update payment status",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Payment Updated",
+        description: "Billing marked as paid successfully",
+      });
+
+      fetchBillings(); // Refresh the list
+    } catch (err) {
+      console.error('Error in handleMarkAsPaid:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+  if (loading) {
+    return (
+      <div className="animate-in fade-in duration-500">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Billing</h1>
-          <p className="text-muted-foreground">Manage dormitory billing and invoices</p>
+          <h1 className="text-2xl font-bold">ระบบคิดเงิน</h1>
+          <p className="text-muted-foreground">จัดการการคิดค่าใช้จ่ายของหอพัก</p>
         </div>
         <div className="mt-4 md:mt-0 space-x-2">
           <Button variant="outline" className="flex items-center gap-2">
             <Download size={16} />
-            Export
+            ส่งออก
           </Button>
-          <Button className="flex items-center gap-2">
-            <Receipt size={16} />
-            Create Invoice
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setShowCalculationDialog(true)}
+          >
+            <Plus size={16} />
+            คำนวณค่าใช้จ่าย
           </Button>
         </div>
       </div>
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
+          <CardTitle>ค้นหาและกรอง</CardTitle>
           <CardDescription>
-            Find invoices by tenant name, invoice number, or room
+            ค้นหาบิลตามชื่อผู้เช่าหรือหมายเลขห้อง
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
             <Input 
-              placeholder="Search invoices..." 
+              placeholder="ค้นหาบิล..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="md:max-w-xs"
@@ -155,13 +237,13 @@ const BillingPage = () => {
               <Filter size={16} className="text-muted-foreground" />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder="กรองตามสถานะ" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="all">ทุกสถานะ</SelectItem>
+                  <SelectItem value="paid">ชำระแล้ว</SelectItem>
+                  <SelectItem value="pending">รอชำระ</SelectItem>
+                  <SelectItem value="overdue">เกินกำหนด</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -171,9 +253,9 @@ const BillingPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
+          <CardTitle>รายการบิล</CardTitle>
           <CardDescription>
-            Showing {filteredBillings.length} of {mockBillings.length} invoices
+            แสดง {filteredBillings.length} จาก {billings.length} รายการ
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -181,38 +263,69 @@ const BillingPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>เดือน</TableHead>
+                  <TableHead>ผู้เช่า</TableHead>
+                  <TableHead>ห้อง</TableHead>
+                  <TableHead>ค่าห้อง</TableHead>
+                  <TableHead>ค่าน้ำ</TableHead>
+                  <TableHead>ค่าไฟ</TableHead>
+                  <TableHead>รวม</TableHead>
+                  <TableHead>ครบกำหนด</TableHead>
+                  <TableHead>สถานะ</TableHead>
+                  <TableHead className="text-right">การดำเนินการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredBillings.length > 0 ? (
                   filteredBillings.map((billing) => (
                     <TableRow key={billing.id}>
-                      <TableCell className="font-medium">{billing.invoiceNumber}</TableCell>
-                      <TableCell>{billing.tenant}</TableCell>
-                      <TableCell>{billing.roomNumber}</TableCell>
-                      <TableCell>{formatCurrency(billing.amount)}</TableCell>
-                      <TableCell>{new Date(billing.dueDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">
+                        {formatMonth(billing.billing_month)}
+                      </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(billing.status)}`}>
-                          {billing.status.charAt(0).toUpperCase() + billing.status.slice(1)}
-                        </span>
+                        {billing.tenants.first_name} {billing.tenants.last_name}
+                      </TableCell>
+                      <TableCell>{billing.rooms.room_number}</TableCell>
+                      <TableCell>{formatCurrency(billing.room_rent)}</TableCell>
+                      <TableCell>
+                        {formatCurrency(billing.water_cost)}
+                        <div className="text-xs text-muted-foreground">
+                          {billing.water_units} คน
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {formatCurrency(billing.electricity_cost)}
+                        <div className="text-xs text-muted-foreground">
+                          {billing.electricity_units} หน่วย
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-bold">
+                        {formatCurrency(billing.total_amount)}
+                      </TableCell>
+                      <TableCell>{formatDate(billing.due_date)}</TableCell>
+                      <TableCell>
+                        <BillingStatusBadge status={billing.status} />
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">View</Button>
+                        <div className="space-x-2">
+                          {billing.status === 'pending' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleMarkAsPaid(billing.id)}
+                            >
+                              ชำระแล้ว
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm">ดูรายละเอียด</Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4">
-                      No invoices found matching your search criteria.
+                    <TableCell colSpan={10} className="text-center py-4">
+                      ไม่พบข้อมูลบิลที่ตรงกับเงื่อนไขการค้นหา
                     </TableCell>
                   </TableRow>
                 )}
@@ -221,6 +334,12 @@ const BillingPage = () => {
           </div>
         </CardContent>
       </Card>
+
+      <BillingCalculationDialog
+        open={showCalculationDialog}
+        onOpenChange={setShowCalculationDialog}
+        onBillingCreated={fetchBillings}
+      />
     </div>
   );
 };

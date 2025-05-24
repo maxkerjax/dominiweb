@@ -176,8 +176,7 @@ const ReportsPage = () => {
       try {
         const { data, error } = await supabase
           .from('rooms')
-          .select('room_type, count(*)')
-          .group('room_type');
+          .select('room_type');
         
         if (error) {
           console.error('Error fetching room types:', error);
@@ -185,11 +184,17 @@ const ReportsPage = () => {
         }
 
         if (data && data.length) {
+          // Count room types manually
+          const roomTypeCounts: { [key: string]: number } = {};
+          data.forEach((room) => {
+            roomTypeCounts[room.room_type] = (roomTypeCounts[room.room_type] || 0) + 1;
+          });
+
           const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
           
-          const formattedData: RoomTypeData[] = data.map((item, index) => ({
-            name: item.room_type,
-            value: parseInt(item.count),
+          const formattedData: RoomTypeData[] = Object.entries(roomTypeCounts).map(([roomType, count], index) => ({
+            name: roomType,
+            value: count,
             color: colors[index % colors.length]
           }));
           
@@ -204,8 +209,7 @@ const ReportsPage = () => {
       try {
         const { data, error } = await supabase
           .from('repairs')
-          .select('repair_type, count(*)')
-          .group('repair_type');
+          .select('repair_type');
         
         if (error) {
           console.error('Error fetching repair types:', error);
@@ -213,11 +217,17 @@ const ReportsPage = () => {
         }
 
         if (data && data.length) {
+          // Count repair types manually
+          const repairTypeCounts: { [key: string]: number } = {};
+          data.forEach((repair) => {
+            repairTypeCounts[repair.repair_type] = (repairTypeCounts[repair.repair_type] || 0) + 1;
+          });
+
           const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
           
-          const formattedData: RoomTypeData[] = data.map((item, index) => ({
-            name: item.repair_type,
-            value: parseInt(item.count),
+          const formattedData: RoomTypeData[] = Object.entries(repairTypeCounts).map(([repairType, count], index) => ({
+            name: repairType,
+            value: count,
             color: colors[index % colors.length]
           }));
           

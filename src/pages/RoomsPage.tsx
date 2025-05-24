@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { useAuth } from "@/providers/AuthProvider";
@@ -36,9 +35,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DoorClosed, MoreVertical, Plus } from "lucide-react";
+import { DoorClosed, MoreVertical, Plus, Edit, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import RoomEditDialog from "@/components/rooms/RoomEditDialog";
+import RoomDetailsDialog from "@/components/rooms/RoomDetailsDialog";
 
 type Room = {
   id: string;
@@ -65,6 +66,9 @@ export default function RoomsPage() {
     floor: 1,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
@@ -187,6 +191,22 @@ export default function RoomsPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleRoomUpdated = (updatedRoom: Room) => {
+    setRooms(rooms.map((room) => 
+      room.id === updatedRoom.id ? updatedRoom : room
+    ));
+  };
+
+  const handleViewDetails = (room: Room) => {
+    setSelectedRoom(room);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleEditRoom = (room: Room) => {
+    setSelectedRoom(room);
+    setEditDialogOpen(true);
   };
 
   useEffect(() => {
@@ -454,25 +474,17 @@ export default function RoomsPage() {
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => {
-                            toast({
-                              title: "View Room",
-                              description: `Viewing details for Room ${room.room_number}`,
-                            });
-                          }}
+                          onClick={() => handleViewDetails(room)}
                         >
+                          <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
                         {(user?.role === "admin" || user?.role === "staff") && (
                           <>
                             <DropdownMenuItem
-                              onClick={() => {
-                                toast({
-                                  title: "Edit Room",
-                                  description: `Editing Room ${room.room_number}`,
-                                });
-                              }}
+                              onClick={() => handleEditRoom(room)}
                             >
+                              <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -515,6 +527,25 @@ export default function RoomsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      {selectedRoom && (
+        <RoomEditDialog
+          room={selectedRoom}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onRoomUpdated={handleRoomUpdated}
+        />
+      )}
+
+      {/* Details Dialog */}
+      {selectedRoom && (
+        <RoomDetailsDialog
+          room={selectedRoom}
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+        />
+      )}
     </div>
   );
 }

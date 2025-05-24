@@ -19,105 +19,117 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users } from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Users, Plus, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react";
+import { useTenants } from "@/hooks/useTenants";
+import TenantFormDialog from "@/components/tenants/TenantFormDialog";
+import TenantDetailsDialog from "@/components/tenants/TenantDetailsDialog";
+import type { Database } from "@/integrations/supabase/types";
 
-// Mock tenant data
-const mockTenants = [
-  {
-    id: 1,
-    name: "John Smith",
-    email: "john.smith@example.com",
-    room: "A-101",
-    status: "active",
-    moveInDate: "2023-01-15",
-    leaseEnd: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Emma Johnson",
-    email: "emma.johnson@example.com",
-    room: "B-205",
-    status: "active",
-    moveInDate: "2023-02-01",
-    leaseEnd: "2024-02-01",
-  },
-  {
-    id: 3,
-    name: "Michael Brown",
-    email: "michael.brown@example.com",
-    room: "C-312",
-    status: "pending",
-    moveInDate: "2023-03-01",
-    leaseEnd: "2024-03-01",
-  },
-  {
-    id: 4,
-    name: "Sophia Garcia",
-    email: "sophia.garcia@example.com",
-    room: "A-110",
-    status: "active",
-    moveInDate: "2022-11-15",
-    leaseEnd: "2023-11-15",
-  },
-  {
-    id: 5,
-    name: "David Lee",
-    email: "david.lee@example.com",
-    room: "B-210",
-    status: "inactive",
-    moveInDate: "2022-09-01",
-    leaseEnd: "2023-09-01",
-  },
-];
+type Tenant = Database['public']['Tables']['tenants']['Row'];
 
 const TenantsPage = () => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
-  const filteredTenants = mockTenants.filter(tenant =>
-    tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.room.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const getStatusClass = (status: string) => {
-    switch(status) {
-      case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "inactive":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+  const {
+    tenants,
+    isLoading,
+    createTenant,
+    updateTenant,
+    deleteTenant,
+    isCreating,
+    isUpdating,
+    isDeleting,
+  } = useTenants();
+
+  const filteredTenants = tenants.filter(tenant => {
+    const fullName = `${tenant.first_name} ${tenant.last_name}`.toLowerCase();
+    const email = tenant.email?.toLowerCase() || "";
+    const phone = tenant.phone?.toLowerCase() || "";
+    const search = searchTerm.toLowerCase();
+    
+    return fullName.includes(search) || 
+           email.includes(search) || 
+           phone.includes(search);
+  });
+
+  const handleAddTenant = () => {
+    setEditingTenant(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditTenant = (tenant: Tenant) => {
+    setEditingTenant(tenant);
+    setIsFormOpen(true);
+  };
+
+  const handleViewDetails = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setIsDetailsOpen(true);
+  };
+
+  const handleDeleteTenant = (tenant: Tenant) => {
+    if (confirm(`คุณแน่ใจหรือไม่ที่จะลบ ${tenant.first_name} ${tenant.last_name}?`)) {
+      deleteTenant(tenant.id);
     }
   };
+
+  const handleFormSubmit = (data: any) => {
+    if (editingTenant) {
+      updateTenant({ id: editingTenant.id, updates: data });
+    } else {
+      createTenant(data);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="animate-in fade-in duration-500">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Tenants</h1>
-          <p className="text-muted-foreground">Manage your property tenants</p>
+          <h1 className="text-2xl font-bold">จัดการผู้เช่า</h1>
+          <p className="text-muted-foreground">จัดการข้อมูลผู้เช่าในอพาร์ตเมนต์</p>
         </div>
         <div className="mt-4 md:mt-0">
-          <Button className="flex items-center gap-2">
-            <Users size={16} />
-            Add New Tenant
+          <Button onClick={handleAddTenant} className="flex items-center gap-2">
+            <Plus size={16} />
+            เพิ่มผู้เช่าใหม่
           </Button>
         </div>
       </div>
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Tenant Search</CardTitle>
+          <CardTitle>ค้นหาผู้เช่า</CardTitle>
           <CardDescription>
-            Search for tenants by name, email or room number
+            ค้นหาผู้เช่าด้วยชื่อ อีเมล หรือเบอร์โทร
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Input 
-            placeholder="Search tenants..." 
+            placeholder="ค้นหาผู้เช่า..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -127,9 +139,9 @@ const TenantsPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tenant List</CardTitle>
+          <CardTitle>รายชื่อผู้เช่า</CardTitle>
           <CardDescription>
-            Showing {filteredTenants.length} of {mockTenants.length} tenants
+            แสดง {filteredTenants.length} จาก {tenants.length} รายการ
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,48 +149,102 @@ const TenantsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Move In Date</TableHead>
-                  <TableHead>Lease End</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>ผู้เช่า</TableHead>
+                  <TableHead>เบอร์โทร</TableHead>
+                  <TableHead>ที่อยู่</TableHead>
+                  <TableHead>วันที่เพิ่ม</TableHead>
+                  <TableHead className="w-[100px]">จัดการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage 
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${tenant.name}`} 
-                            alt={tenant.name} 
-                          />
-                          <AvatarFallback>
-                            {tenant.name.split(" ").map(n => n[0]).join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{tenant.name}</p>
-                          <p className="text-sm text-muted-foreground">{tenant.email}</p>
-                        </div>
+                {filteredTenants.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <Users className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-muted-foreground">ไม่มีข้อมูลผู้เช่า</p>
                       </div>
                     </TableCell>
-                    <TableCell>{tenant.room}</TableCell>
-                    <TableCell>{new Date(tenant.moveInDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(tenant.leaseEnd).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(tenant.status)}`}>
-                        {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
-                      </span>
-                    </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredTenants.map((tenant) => {
+                    const fullName = `${tenant.first_name} ${tenant.last_name}`;
+                    return (
+                      <TableRow key={tenant.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage 
+                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}`} 
+                                alt={fullName} 
+                              />
+                              <AvatarFallback>
+                                {tenant.first_name.charAt(0)}{tenant.last_name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{fullName}</p>
+                              <p className="text-sm text-muted-foreground">{tenant.email}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{tenant.phone || "-"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {tenant.address || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(tenant.created_at!).toLocaleDateString('th-TH')}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(tenant)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                ดูรายละเอียด
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditTenant(tenant)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                แก้ไข
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteTenant(tenant)}
+                                className="text-destructive"
+                                disabled={isDeleting}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                ลบ
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
+
+      <TenantFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        tenant={editingTenant}
+        onSubmit={handleFormSubmit}
+        isLoading={isCreating || isUpdating}
+      />
+
+      <TenantDetailsDialog
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        tenant={selectedTenant}
+      />
     </div>
   );
 };

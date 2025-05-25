@@ -58,13 +58,13 @@ export const PasswordResetDialog = ({ open, onOpenChange, userEmail }: PasswordR
     setLoading(true);
     try {
       // Get user by email first
-      const { data: users, error: getUserError } = await supabase.auth.admin.listUsers();
+      const { data: userData, error: getUserError } = await supabase.auth.admin.listUsers();
       
       if (getUserError) {
         throw getUserError;
       }
 
-      const user = users.users.find(u => u.email === data.email);
+      const user = userData.users.find(u => u.email === data.email);
       if (!user) {
         throw new Error("ไม่พบผู้ใช้ที่มีอีเมลนี้");
       }

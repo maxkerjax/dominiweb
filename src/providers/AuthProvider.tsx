@@ -20,12 +20,6 @@ type AuthContextType = {
   user: AuthUser | null;
   session: Session | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, userData?: { 
-    first_name: string; 
-    last_name: string; 
-    phone?: string;
-    role?: "admin" | "staff" | "tenant";
-  }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 };
@@ -152,74 +146,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // User profile will be set by the auth state change listener
   };
 
-  const signup = async (email: string, password: string, userData?: { 
-    first_name: string; 
-    last_name: string; 
-    phone?: string;
-    role?: "admin" | "staff" | "tenant";
-  }) => {
-    setLoading(true);
-    
-    // Sign up the user
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setLoading(false);
-      throw error;
-    }
-
-    // If user data is provided, create tenant record and update profile
-    if (data.user && userData) {
-      try {
-        let tenant = null;
-        
-        // Create tenant record if role is tenant or not specified
-        if (!userData.role || userData.role === 'tenant') {
-          const { data: tenantData, error: tenantError } = await supabase
-            .from('tenants')
-            .insert({
-              first_name: userData.first_name,
-              last_name: userData.last_name,
-              email: email,
-              phone: userData.phone,
-              auth_email: email,
-            })
-            .select()
-            .single();
-
-          if (tenantError) {
-            console.error('Error creating tenant:', tenantError);
-          } else {
-            tenant = tenantData;
-          }
-        }
-
-        // Update profile with role and tenant_id (if applicable)
-        const profileUpdates: any = { 
-          role: userData.role || 'tenant' 
-        };
-        
-        if (tenant) {
-          profileUpdates.tenant_id = tenant.id;
-        }
-
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update(profileUpdates)
-          .eq('id', data.user.id);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-        }
-      } catch (error) {
-        console.error('Error in signup process:', error);
-      }
-    }
-  };
-
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -230,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, login, signup, logout, loading }}>
+    <AuthContext.Provider value={{ user, session, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

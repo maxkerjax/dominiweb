@@ -7,13 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/providers/AuthProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { SignupForm } from "@/components/auth/SignupForm";
 
 export default function LoginPage() {
   const { user } = useAuth();
@@ -47,28 +45,13 @@ export default function LoginPage() {
           <CardHeader>
             <CardTitle>ระบบจัดการหอพัก</CardTitle>
             <CardDescription>
-              เข้าสู่ระบบหรือสมัครสมาชิกใหม่
+              เข้าสู่ระบบด้วยบัญชีที่ผู้ดูแลระบบสร้างให้
             </CardDescription>
           </CardHeader>
           
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mx-6">
-              <TabsTrigger value="login">เข้าสู่ระบบ</TabsTrigger>
-              <TabsTrigger value="signup">สมัครสมาชิก</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <CardContent>
-                <LoginForm />
-              </CardContent>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <CardContent>
-                <SignupForm />
-              </CardContent>
-            </TabsContent>
-          </Tabs>
+          <CardContent>
+            <LoginForm />
+          </CardContent>
         </Card>
       </div>
     </div>

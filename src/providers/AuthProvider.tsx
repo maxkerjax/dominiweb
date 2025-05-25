@@ -20,7 +20,12 @@ type AuthContextType = {
   user: AuthUser | null;
   session: Session | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, tenantData?: { first_name: string; last_name: string; phone?: string }) => Promise<void>;
+  signup: (email: string, password: string, userData?: { 
+    first_name: string; 
+    last_name: string; 
+    phone?: string;
+    role?: "admin" | "staff" | "tenant";
+  }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 };
@@ -46,7 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
-      // Get tenant data if user is a tenant
+      // Get tenant data if user is a tenant and has tenant_id
       let tenant = null;
       if (profile?.tenant_id) {
         const { data: tenantData, error: tenantError } = await supabase
@@ -59,6 +64,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Error fetching tenant:', tenantError);
         } else {
           tenant = tenantData;
+        }
+      }
+
+      // If user is a tenant but no tenant record exists, try to find by email
+      if (profile?.role === 'tenant' && !tenant) {
+        const { data: tenantByEmail, error: tenantByEmailError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('auth_email', userEmail)
+          .single();
+
+        if (!tenantByEmailError && tenantByEmail) {
+          tenant = tenantByEmail;
+          
+          // Update profile with tenant_id
+          await supabase
+            .from('profiles')
+            .update({ tenant_id: tenant.id })
+            .eq('id', userId);
         }
       }
 
@@ -128,7 +152,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // User profile will be set by the auth state change listener
   };
 
-  const signup = async (email: string, password: string, tenantData?: { first_name: string; last_name: string; phone?: string }) => {
+  const signup = async (email: string, password: string, userData?: { 
+    first_name: string; 
+    last_name: string; 
+    phone?: string;
+    role?: "admin" | "staff" | "tenant";
+  }) => {
     setLoading(true);
     
     // Sign up the user
@@ -142,36 +171,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
 
-    // If tenant data is provided, create tenant record
-    if (data.user && tenantData) {
+    // If user data is provided, create tenant record and update profile
+    if (data.user && userData) {
       try {
-        const { data: tenant, error: tenantError } = await supabase
-          .from('tenants')
-          .insert({
-            first_name: tenantData.first_name,
-            last_name: tenantData.last_name,
-            email: email,
-            phone: tenantData.phone,
-            auth_email: email,
-          })
-          .select()
-          .single();
+        let tenant = null;
+        
+        // Create tenant record if role is tenant or not specified
+        if (!userData.role || userData.role === 'tenant') {
+          const { data: tenantData, error: tenantError } = await supabase
+            .from('tenants')
+            .insert({
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              email: email,
+              phone: userData.phone,
+              auth_email: email,
+            })
+            .select()
+            .single();
 
-        if (tenantError) {
-          console.error('Error creating tenant:', tenantError);
-        } else {
-          // Update profile with tenant_id
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ tenant_id: tenant.id })
-            .eq('id', data.user.id);
-
-          if (profileError) {
-            console.error('Error updating profile:', profileError);
+          if (tenantError) {
+            console.error('Error creating tenant:', tenantError);
+          } else {
+            tenant = tenantData;
           }
         }
+
+        // Update profile with role and tenant_id (if applicable)
+        const profileUpdates: any = { 
+          role: userData.role || 'tenant' 
+        };
+        
+        if (tenant) {
+          profileUpdates.tenant_id = tenant.id;
+        }
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update(profileUpdates)
+          .eq('id', data.user.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
       } catch (error) {
-        console.error('Error in tenant creation:', error);
+        console.error('Error in signup process:', error);
       }
     }
   };

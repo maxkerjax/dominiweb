@@ -64,13 +64,13 @@ export const PasswordResetDialog = ({ open, onOpenChange, userEmail }: PasswordR
         throw getUserError;
       }
 
-      const user = userData.users.find(u => u.email === data.email);
-      if (!user) {
+      const targetUser = userData.users.find((u: any) => u.email === data.email);
+      if (!targetUser) {
         throw new Error("ไม่พบผู้ใช้ที่มีอีเมลนี้");
       }
 
       // Update user password
-      const { error } = await supabase.auth.admin.updateUserById(user.id, {
+      const { error } = await supabase.auth.admin.updateUserById(targetUser.id, {
         password: data.newPassword,
       });
 

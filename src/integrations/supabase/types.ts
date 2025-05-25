@@ -207,6 +207,38 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          role?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       repairs: {
         Row: {
           completed_date: string | null
@@ -290,6 +322,7 @@ export type Database = {
       tenants: {
         Row: {
           address: string | null
+          auth_email: string | null
           created_at: string | null
           email: string | null
           emergency_contact: string | null
@@ -301,6 +334,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auth_email?: string | null
           created_at?: string | null
           email?: string | null
           emergency_contact?: string | null
@@ -312,6 +346,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auth_email?: string | null
           created_at?: string | null
           email?: string | null
           emergency_contact?: string | null

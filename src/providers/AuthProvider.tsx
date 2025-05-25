@@ -1,97 +1,192 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
-type User = {
-  id: number;
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type Tenant = Database['public']['Tables']['tenants']['Row'];
+
+type AuthUser = {
+  id: string;
   email: string;
   name: string;
   role: "admin" | "staff" | "tenant" | "visitor";
+  profile?: Profile;
+  tenant?: Tenant;
 };
 
 type AuthContextType = {
-  user: User | null;
+  user: AuthUser | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  signup: (email: string, password: string, tenantData?: { first_name: string; last_name: string; phone?: string }) => Promise<void>;
+  logout: () => Promise<void>;
   loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demo purposes
-const mockUsers = [
-  {
-    id: 1,
-    email: "admin@example.com",
-    password: "admin123", // In a real app, this would be hashed
-    name: "Admin User",
-    role: "admin" as const,
-  },
-  {
-    id: 2,
-    email: "staff@example.com",
-    password: "staff123",
-    name: "Staff User",
-    role: "staff" as const,
-  },
-  {
-    id: 3,
-    email: "tenant@example.com",
-    password: "tenant123",
-    name: "Tenant User",
-    role: "tenant" as const,
-  },
-];
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem("dormUser");
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error("Invalid user data in localStorage");
-        localStorage.removeItem("dormUser");
+  const fetchUserProfile = async (userId: string, userEmail: string) => {
+    try {
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        return null;
       }
+
+      // Get tenant data if user is a tenant
+      let tenant = null;
+      if (profile?.tenant_id) {
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', profile.tenant_id)
+          .single();
+
+        if (tenantError) {
+          console.error('Error fetching tenant:', tenantError);
+        } else {
+          tenant = tenantData;
+        }
+      }
+
+      return {
+        id: userId,
+        email: userEmail,
+        name: tenant ? `${tenant.first_name} ${tenant.last_name}` : userEmail,
+        role: profile.role as "admin" | "staff" | "tenant" | "visitor",
+        profile,
+        tenant
+      };
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return null;
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        setSession(session);
+        
+        if (session?.user) {
+          // Defer profile fetching to avoid blocking auth state
+          setTimeout(async () => {
+            const userProfile = await fetchUserProfile(session.user.id, session.user.email!);
+            setUser(userProfile);
+            setLoading(false);
+          }, 0);
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setSession(session);
+        fetchUserProfile(session.user.id, session.user.email!).then((userProfile) => {
+          setUser(userProfile);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate network request
     setLoading(true);
-    
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = mockUsers.find(
-          (u) => u.email === email && u.password === password
-        );
-        
-        if (foundUser) {
-          // Create a user object without the password
-          const { password, ...userWithoutPassword } = foundUser;
-          setUser(userWithoutPassword);
-          localStorage.setItem("dormUser", JSON.stringify(userWithoutPassword));
-          setLoading(false);
-          resolve();
-        } else {
-          setLoading(false);
-          reject(new Error("Invalid email or password"));
-        }
-      }, 1000);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
+
+    if (error) {
+      setLoading(false);
+      throw error;
+    }
+
+    // User profile will be set by the auth state change listener
   };
 
-  const logout = () => {
+  const signup = async (email: string, password: string, tenantData?: { first_name: string; last_name: string; phone?: string }) => {
+    setLoading(true);
+    
+    // Sign up the user
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setLoading(false);
+      throw error;
+    }
+
+    // If tenant data is provided, create tenant record
+    if (data.user && tenantData) {
+      try {
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .insert({
+            first_name: tenantData.first_name,
+            last_name: tenantData.last_name,
+            email: email,
+            phone: tenantData.phone,
+            auth_email: email,
+          })
+          .select()
+          .single();
+
+        if (tenantError) {
+          console.error('Error creating tenant:', tenantError);
+        } else {
+          // Update profile with tenant_id
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ tenant_id: tenant.id })
+            .eq('id', data.user.id);
+
+          if (profileError) {
+            console.error('Error updating profile:', profileError);
+          }
+        }
+      } catch (error) {
+        console.error('Error in tenant creation:', error);
+      }
+    }
+  };
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
     setUser(null);
-    localStorage.removeItem("dormUser");
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, session, login, signup, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

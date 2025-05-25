@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/providers/AuthProvider";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tenant = Database['public']['Tables']['tenants']['Row'];
@@ -11,6 +12,7 @@ type TenantUpdate = Database['public']['Tables']['tenants']['Update'];
 export const useTenants = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const {
     data: tenants = [],
@@ -33,6 +35,7 @@ export const useTenants = () => {
       console.log('Tenants fetched:', data);
       return data || [];
     },
+    enabled: !!user, // Only fetch when user is authenticated
   });
 
   const createTenantMutation = useMutation({

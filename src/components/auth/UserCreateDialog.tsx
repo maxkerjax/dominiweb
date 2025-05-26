@@ -23,6 +23,7 @@ import { RoleSelector } from "./RoleSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider";
 
 const userSchema = z.object({
   email: z.string().email("กรุณาใส่อีเมลที่ถูกต้อง"),
@@ -46,6 +47,7 @@ interface UserCreateDialogProps {
 export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { session } = useAuth();
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -60,48 +62,43 @@ export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDi
   });
 
   const onSubmit = async (data: UserFormData) => {
+    if (!session?.access_token) {
+      toast.error("ไม่พบ session การเข้าสู่ระบบ");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Create user via Supabase Admin API (this would typically be done via an edge function)
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        email_confirm: true,
+      console.log('Calling create-user function with data:', { 
+        email: data.email, 
+        role: data.role 
       });
 
-      if (authError) {
-        throw authError;
+      const { data: result, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: data.email,
+          password: data.password,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          role: data.role,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'ไม่สามารถสร้างบัญชีผู้ใช้ได้');
       }
 
-      if (authData.user) {
-        // Create tenant record if role is tenant
-        if (data.role === 'tenant') {
-          const { error: tenantError } = await supabase
-            .from('tenants')
-            .insert({
-              first_name: data.firstName,
-              last_name: data.lastName,
-              email: data.email,
-              phone: data.phone,
-              auth_email: data.email,
-            });
-
-          if (tenantError) {
-            console.error('Error creating tenant:', tenantError);
-          }
-        }
-
-        // Update profile with role
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ role: data.role })
-          .eq('id', authData.user.id);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-        }
+      if (result?.error) {
+        console.error('Create user error:', result.error);
+        throw new Error(result.error);
       }
 
+      console.log('User created successfully:', result);
       toast.success("สร้างบัญชีผู้ใช้สำเร็จ!");
       form.reset();
       onOpenChange(false);

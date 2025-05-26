@@ -8,30 +8,57 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Settings, Database, Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useSystemStats } from "@/hooks/useSystemStats";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 export function SystemSettingsCard() {
-  const [loading, setLoading] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const { data: stats, isLoading: statsLoading } = useSystemStats();
+  const { settings, saveSettings, loading: settingsLoading } = useSystemSettings();
+  
+  const [formSettings, setFormSettings] = useState({
+    waterRate: settings.waterRate,
+    electricityRate: settings.electricityRate,
+    lateFee: settings.lateFee,
+    depositRate: settings.depositRate
+  });
 
   const handleSystemBackup = async () => {
-    setLoading(true);
+    setBackupLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
       toast.success("สำรองข้อมูลเสร็จสิ้น!");
     } catch (error) {
       toast.error("ไม่สามารถสำรองข้อมูลได้");
     } finally {
-      setLoading(false);
+      setBackupLoading(false);
     }
   };
 
   const handleClearCache = async () => {
     try {
-      // Clear localStorage
+      // Clear localStorage except for auth data
+      const authData = localStorage.getItem('sb-mnsotnlftoumjwjlvzus-auth-token');
       localStorage.clear();
+      if (authData) {
+        localStorage.setItem('sb-mnsotnlftoumjwjlvzus-auth-token', authData);
+      }
       toast.success("ล้าง Cache เสร็จสิ้น!");
     } catch (error) {
       toast.error("ไม่สามารถล้าง Cache ได้");
     }
+  };
+
+  const handleSaveSettings = async () => {
+    await saveSettings(formSettings);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setFormSettings(prev => ({
+      ...prev,
+      [field]: numValue
+    }));
   };
 
   return (
@@ -51,19 +78,27 @@ export function SystemSettingsCard() {
           <h3 className="text-lg font-medium">ข้อมูลระบบ</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-3 border rounded-lg">
-              <div className="text-2xl font-bold text-primary">24</div>
+              <div className="text-2xl font-bold text-primary">
+                {statsLoading ? "..." : stats?.totalRooms || 0}
+              </div>
               <div className="text-sm text-muted-foreground">ห้องทั้งหมด</div>
             </div>
             <div className="text-center p-3 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">18</div>
+              <div className="text-2xl font-bold text-green-600">
+                {statsLoading ? "..." : stats?.occupiedRooms || 0}
+              </div>
               <div className="text-sm text-muted-foreground">ห้องที่เช่าแล้ว</div>
             </div>
             <div className="text-center p-3 border rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">45</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {statsLoading ? "..." : stats?.totalTenants || 0}
+              </div>
               <div className="text-sm text-muted-foreground">ผู้เช่าทั้งหมด</div>
             </div>
             <div className="text-center p-3 border rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">3</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {statsLoading ? "..." : stats?.pendingRepairs || 0}
+              </div>
               <div className="text-sm text-muted-foreground">งานซ่อมรอดำเนินการ</div>
             </div>
           </div>
@@ -77,22 +112,52 @@ export function SystemSettingsCard() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label htmlFor="water-rate">อัตราค่าน้ำ (บาท/หน่วย)</Label>
-              <Input id="water-rate" type="number" defaultValue="18" className="mt-1" />
+              <Input 
+                id="water-rate" 
+                type="number" 
+                value={formSettings.waterRate}
+                onChange={(e) => handleInputChange('waterRate', e.target.value)}
+                className="mt-1" 
+              />
             </div>
             <div>
               <Label htmlFor="electricity-rate">อัตราค่าไฟ (บาท/หน่วย)</Label>
-              <Input id="electricity-rate" type="number" defaultValue="8" className="mt-1" />
+              <Input 
+                id="electricity-rate" 
+                type="number" 
+                value={formSettings.electricityRate}
+                onChange={(e) => handleInputChange('electricityRate', e.target.value)}
+                className="mt-1" 
+              />
             </div>
             <div>
               <Label htmlFor="late-fee">ค่าปรับชำระล่าช้า (%)</Label>
-              <Input id="late-fee" type="number" defaultValue="5" className="mt-1" />
+              <Input 
+                id="late-fee" 
+                type="number" 
+                value={formSettings.lateFee}
+                onChange={(e) => handleInputChange('lateFee', e.target.value)}
+                className="mt-1" 
+              />
             </div>
             <div>
               <Label htmlFor="deposit-rate">อัตราเงินมัดจำ (เท่าของค่าเช่า)</Label>
-              <Input id="deposit-rate" type="number" defaultValue="2" className="mt-1" />
+              <Input 
+                id="deposit-rate" 
+                type="number" 
+                value={formSettings.depositRate}
+                onChange={(e) => handleInputChange('depositRate', e.target.value)}
+                className="mt-1" 
+              />
             </div>
           </div>
-          <Button className="w-full md:w-auto">บันทึกการตั้งค่า</Button>
+          <Button 
+            onClick={handleSaveSettings}
+            disabled={settingsLoading}
+            className="w-full md:w-auto"
+          >
+            {settingsLoading ? "กำลังบันทึก..." : "บันทึกการตั้งค่า"}
+          </Button>
         </div>
 
         <Separator />
@@ -104,11 +169,11 @@ export function SystemSettingsCard() {
             <Button 
               variant="outline" 
               onClick={handleSystemBackup}
-              disabled={loading}
+              disabled={backupLoading}
               className="flex items-center space-x-2"
             >
               <Database className="h-4 w-4" />
-              <span>{loading ? "กำลังสำรอง..." : "สำรองข้อมูล"}</span>
+              <span>{backupLoading ? "กำลังสำรอง..." : "สำรองข้อมูล"}</span>
             </Button>
             
             <Button 

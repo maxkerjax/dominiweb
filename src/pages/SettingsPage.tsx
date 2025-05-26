@@ -8,21 +8,46 @@ import { UserManagementDialog } from "@/components/auth/UserManagementDialog";
 import { ProfileSettingsCard } from "@/components/settings/ProfileSettingsCard";
 import { SystemSettingsCard } from "@/components/settings/SystemSettingsCard";
 import { ThemeSettingsCard } from "@/components/settings/ThemeSettingsCard";
-import { Users, Settings, Palette, Shield } from "lucide-react";
+import { Users, Shield } from "lucide-react";
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { language } = useLanguage();
+
+  const getRoleText = (role: string) => {
+    if (language === 'th') {
+      switch (role) {
+        case 'admin': return 'ผู้ดูแลระบบ';
+        case 'staff': return 'พนักงาน';
+        case 'tenant': return 'ผู้เช่า';
+        default: return 'ผู้เยี่ยมชม';
+      }
+    } else {
+      switch (role) {
+        case 'admin': return 'Administrator';
+        case 'staff': return 'Staff';
+        case 'tenant': return 'Tenant';
+        default: return 'Visitor';
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">ตั้งค่า</h1>
-          <p className="text-muted-foreground">จัดการการตั้งค่าระบบและโปรไฟล์ของคุณ</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {language === 'th' ? 'ตั้งค่า' : 'Settings'}
+          </h1>
+          <p className="text-muted-foreground">
+            {language === 'th' 
+              ? 'จัดการการตั้งค่าระบบและโปรไฟล์ของคุณ'
+              : 'Manage your system settings and profile'
+            }
+          </p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">
-          {user?.role === 'admin' ? 'ผู้ดูแลระบบ' : user?.role === 'staff' ? 'พนักงาน' : 'ผู้เช่า'}
+          {getRoleText(user?.role || 'visitor')}
         </Badge>
       </div>
 
@@ -39,17 +64,22 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Users className="h-5 w-5" />
-                <span>จัดการผู้ใช้</span>
+                <span>
+                  {language === 'th' ? 'จัดการผู้ใช้' : 'User Management'}
+                </span>
               </CardTitle>
               <CardDescription>
-                สร้างบัญชีผู้ใช้ใหม่และรีเซ็ตรหัสผ่าน
+                {language === 'th' 
+                  ? 'สร้างบัญชีผู้ใช้ใหม่และรีเซ็ตรหัสผ่าน'
+                  : 'Create new user accounts and reset passwords'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
               <UserManagementDialog>
                 <Button className="w-full">
                   <Shield className="mr-2 h-4 w-4" />
-                  เปิดการจัดการผู้ใช้
+                  {language === 'th' ? 'เปิดการจัดการผู้ใช้' : 'Open User Management'}
                 </Button>
               </UserManagementDialog>
             </CardContent>

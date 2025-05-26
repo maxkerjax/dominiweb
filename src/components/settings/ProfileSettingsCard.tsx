@@ -1,6 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +13,66 @@ import { toast } from "sonner";
 export function ProfileSettingsCard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    address: "",
+    email: user?.email || ""
+  });
+
+  useEffect(() => {
+    if (user?.tenant) {
+      setFormData({
+        firstName: user.tenant.first_name || "",
+        lastName: user.tenant.last_name || "",
+        phone: user.tenant.phone || "",
+        address: user.tenant.address || "",
+        email: user.tenant.email || user.email || ""
+      });
+    }
+  }, [user]);
 
   const handleSaveProfile = async () => {
+    if (!user?.tenant?.id) {
+      toast.error("ไม่พบข้อมูลผู้ใช้");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate save
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase
+        .from('tenants')
+        .update({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          email: formData.email,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.tenant.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast.error("ไม่สามารถบันทึกโปรไฟล์ได้");
+        return;
+      }
+
       toast.success("บันทึกโปรไฟล์สำเร็จ!");
     } catch (error) {
-      toast.error("ไม่สามารถบันทึกโปรไฟล์ได้");
+      console.error('Error updating profile:', error);
+      toast.error("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -55,13 +104,25 @@ export function ProfileSettingsCard() {
         </div>
 
         <div className="space-y-3">
-          <div>
-            <Label htmlFor="name">ชื่อ-นามสกุล</Label>
-            <Input 
-              id="name" 
-              defaultValue={user?.name} 
-              className="mt-1"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="firstName">ชื่อ</Label>
+              <Input 
+                id="firstName" 
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">นามสกุล</Label>
+              <Input 
+                id="lastName" 
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                className="mt-1"
+              />
+            </div>
           </div>
 
           <div>
@@ -72,9 +133,9 @@ export function ProfileSettingsCard() {
             <Input 
               id="email" 
               type="email" 
-              defaultValue={user?.email} 
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
               className="mt-1"
-              disabled
             />
           </div>
 
@@ -85,6 +146,8 @@ export function ProfileSettingsCard() {
             </Label>
             <Input 
               id="phone" 
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
               placeholder="กรุณาใส่เบอร์โทรศัพท์" 
               className="mt-1"
             />
@@ -97,6 +160,8 @@ export function ProfileSettingsCard() {
             </Label>
             <Input 
               id="address" 
+              value={formData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
               placeholder="กรุณาใส่ที่อยู่" 
               className="mt-1"
             />

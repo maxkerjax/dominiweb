@@ -47,7 +47,7 @@ interface UserCreateDialogProps {
 export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -64,6 +64,11 @@ export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDi
   const onSubmit = async (data: UserFormData) => {
     if (!session?.access_token) {
       toast.error("ไม่พบ session การเข้าสู่ระบบ");
+      return;
+    }
+
+    if (user?.role !== 'admin') {
+      toast.error("คุณไม่มีสิทธิ์ในการสร้างบัญชีผู้ใช้ใหม่");
       return;
     }
 
@@ -90,12 +95,20 @@ export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDi
 
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(error.message || 'ไม่สามารถสร้างบัญชีผู้ใช้ได้');
+        
+        // Handle specific error cases
+        if (error.message.includes('Edge Function returned a non-2xx status code')) {
+          toast.error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ กรุณาตรวจสอบสิทธิ์การเข้าถึง");
+        } else {
+          toast.error(error.message || 'ไม่สามารถสร้างบัญชีผู้ใช้ได้');
+        }
+        return;
       }
 
       if (result?.error) {
         console.error('Create user error:', result.error);
-        throw new Error(result.error);
+        toast.error(result.error);
+        return;
       }
 
       console.log('User created successfully:', result);

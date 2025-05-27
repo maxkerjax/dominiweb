@@ -30,32 +30,78 @@ export function ProfileSettingsCard() {
         address: user.tenant.address || "",
         email: user.tenant.email || user.email || ""
       });
+    } else if (user?.email) {
+      // If no tenant data but user exists, set email at least
+      setFormData(prev => ({
+        ...prev,
+        email: user.email
+      }));
     }
   }, [user]);
 
   const handleSaveProfile = async () => {
-    if (!user?.tenant?.id) {
+    if (!user?.id) {
       toast.error("ไม่พบข้อมูลผู้ใช้");
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('tenants')
-        .update({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          address: formData.address,
-          email: formData.email,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.tenant.id);
+      // If user is a tenant with tenant data, update tenant table
+      if (user.tenant?.id) {
+        const { error } = await supabase
+          .from('tenants')
+          .update({
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            address: formData.address,
+            email: formData.email,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.tenant.id);
 
-      if (error) {
-        console.error('Error updating profile:', error);
-        toast.error("ไม่สามารถบันทึกโปรไฟล์ได้");
+        if (error) {
+          console.error('Error updating tenant profile:', error);
+          toast.error("ไม่สามารถบันทึกโปรไฟล์ได้");
+          return;
+        }
+      } else if (user.role === 'tenant') {
+        // If user is tenant but no tenant record exists, create one
+        const { error } = await supabase
+          .from('tenants')
+          .insert({
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            address: formData.address,
+            email: formData.email,
+            auth_email: user.email
+          });
+
+        if (error) {
+          console.error('Error creating tenant profile:', error);
+          toast.error("ไม่สามารถสร้างโปรไฟล์ได้");
+          return;
+        }
+
+        // Link the new tenant to the profile
+        const { data: newTenant } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('auth_email', user.email)
+          .single();
+
+        if (newTenant) {
+          await supabase
+            .from('profiles')
+            .update({ tenant_id: newTenant.id })
+            .eq('id', user.id);
+        }
+      } else {
+        // For admin/staff, we might want to store basic info somewhere else
+        // or just show a message that profile editing is for tenants only
+        toast.info("การแก้ไขโปรไฟล์รองรับเฉพาะผู้เช่าเท่านั้น");
         return;
       }
 
@@ -74,6 +120,44 @@ export function ProfileSettingsCard() {
       [field]: value
     }));
   };
+
+  // Show different UI based on user role
+  if (user?.role !== 'tenant') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <User className="h-5 w-5" />
+            <span>โปรไฟล์ส่วนตัว</span>
+          </CardTitle>
+          <CardDescription>
+            จัดการข้อมูลส่วนตัวของคุณ
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-16 w-16">
+              <AvatarImage 
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} 
+                alt={user?.name} 
+              />
+              <AvatarFallback>
+                {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="text-lg font-medium">{user?.name}</h3>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <p className="text-sm text-muted-foreground">บทบาท: {user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}</p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            การแก้ไขโปรไฟล์รองรับเฉพาะผู้เช่าเท่านั้น
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

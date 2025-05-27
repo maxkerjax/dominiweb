@@ -57,8 +57,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('User authenticated:', user.email);
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseClient
+    // Create Supabase client with service role for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Check if user is admin using service role client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -86,18 +98,6 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, password, firstName, lastName, phone, role }: CreateUserRequest = await req.json();
 
     console.log('Creating user:', { email, role });
-
-    // Create Supabase client with service role for admin operations
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
 
     // Create user with admin privileges
     const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -144,13 +144,13 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Update profile with role
-      const { error: profileError } = await supabaseAdmin
+      const { error: profileUpdateError } = await supabaseAdmin
         .from('profiles')
         .update({ role: role })
         .eq('id', authData.user.id);
 
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
+      if (profileUpdateError) {
+        console.error('Error updating profile:', profileUpdateError);
         // Don't return error here, user is already created
       } else {
         console.log('Profile updated successfully');

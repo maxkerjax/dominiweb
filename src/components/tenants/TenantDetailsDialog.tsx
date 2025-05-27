@@ -7,10 +7,17 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin, AlertCircle } from "lucide-react";
+import { Mail, Phone, MapPin, AlertCircle, Home, Building } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
-type Tenant = Database['public']['Tables']['tenants']['Row'];
+type Tenant = Database['public']['Tables']['tenants']['Row'] & {
+  current_room?: {
+    id: string;
+    room_number: string;
+    room_type: string;
+    floor: number;
+  } | null;
+};
 
 interface TenantDetailsDialogProps {
   open: boolean;
@@ -52,6 +59,27 @@ export default function TenantDetailsDialog({
           </div>
           
           <div className="space-y-4">
+            {tenant.current_room && (
+              <div className="flex items-center space-x-3">
+                <Home className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">ห้องที่เช่า</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline">ห้อง {tenant.current_room.room_number}</Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {tenant.current_room.room_type}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Building className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      ชั้น {tenant.current_room.floor}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {tenant.email && (
               <div className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />

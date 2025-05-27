@@ -1,11 +1,17 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/providers/AuthProvider";
 import type { Database } from "@/integrations/supabase/types";
 
-type Tenant = Database['public']['Tables']['tenants']['Row'];
+type Tenant = Database['public']['Tables']['tenants']['Row'] & {
+  current_room?: {
+    id: string;
+    room_number: string;
+    room_type: string;
+    floor: number;
+  } | null;
+};
 type TenantInsert = Database['public']['Tables']['tenants']['Insert'];
 type TenantUpdate = Database['public']['Tables']['tenants']['Update'];
 
@@ -21,19 +27,53 @@ export const useTenants = () => {
   } = useQuery({
     queryKey: ['tenants'],
     queryFn: async () => {
-      console.log('Fetching tenants...');
+      console.log('Fetching tenants with room information...');
       const { data, error } = await supabase
         .from('tenants')
-        .select('*')
+        .select(`
+          *,
+          current_room:occupancy!inner(
+            room_id,
+            rooms!inner(
+              id,
+              room_number,
+              room_type,
+              floor
+            )
+          )
+        `)
+        .eq('occupancy.is_current', true)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching tenants:', error);
-        throw error;
+        // If the join fails, fallback to basic tenant data
+        const { data: basicData, error: basicError } = await supabase
+          .from('tenants')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (basicError) {
+          throw basicError;
+        }
+        
+        console.log('Fallback: Tenants fetched without room info:', basicData);
+        return basicData?.map(tenant => ({ ...tenant, current_room: null })) || [];
       }
 
-      console.log('Tenants fetched:', data);
-      return data || [];
+      // Transform the data to flatten room information
+      const transformedData = data?.map(tenant => ({
+        ...tenant,
+        current_room: tenant.current_room?.[0]?.rooms ? {
+          id: tenant.current_room[0].rooms.id,
+          room_number: tenant.current_room[0].rooms.room_number,
+          room_type: tenant.current_room[0].rooms.room_type,
+          floor: tenant.current_room[0].rooms.floor,
+        } : null
+      })) || [];
+
+      console.log('Tenants with room info fetched:', transformedData);
+      return transformedData;
     },
     enabled: !!user, // Only fetch when user is authenticated
   });

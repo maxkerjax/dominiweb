@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { 
@@ -19,19 +18,27 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Users, Plus, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react";
+import { Users, Plus, MoreHorizontal, Eye, Edit, Trash2, Home } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import TenantFormDialog from "@/components/tenants/TenantFormDialog";
 import TenantDetailsDialog from "@/components/tenants/TenantDetailsDialog";
 import type { Database } from "@/integrations/supabase/types";
 
-type Tenant = Database['public']['Tables']['tenants']['Row'];
+type Tenant = Database['public']['Tables']['tenants']['Row'] & {
+  current_room?: {
+    id: string;
+    room_number: string;
+    room_type: string;
+    floor: number;
+  } | null;
+};
 
 const TenantsPage = () => {
   const { t } = useLanguage();
@@ -56,11 +63,13 @@ const TenantsPage = () => {
     const fullName = `${tenant.first_name} ${tenant.last_name}`.toLowerCase();
     const email = tenant.email?.toLowerCase() || "";
     const phone = tenant.phone?.toLowerCase() || "";
+    const roomNumber = tenant.current_room?.room_number?.toLowerCase() || "";
     const search = searchTerm.toLowerCase();
     
     return fullName.includes(search) || 
            email.includes(search) || 
-           phone.includes(search);
+           phone.includes(search) ||
+           roomNumber.includes(search);
   });
 
   const handleAddTenant = () => {
@@ -110,7 +119,7 @@ const TenantsPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">จัดการผู้เช่า</h1>
-          <p className="text-muted-foreground">จัดการข้อมูลผู้เช่าในอพาร์ตเมนต์</p>
+          <p className="text-muted-foreground">จัดการข้อมูลผู้เช่าและห้องที่เช่าในอพาร์ตเมนต์</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Button onClick={handleAddTenant} className="flex items-center gap-2">
@@ -124,7 +133,7 @@ const TenantsPage = () => {
         <CardHeader>
           <CardTitle>ค้นหาผู้เช่า</CardTitle>
           <CardDescription>
-            ค้นหาผู้เช่าด้วยชื่อ อีเมล หรือเบอร์โทร
+            ค้นหาผู้เช่าด้วยชื่อ อีเมล เบอร์โทร หรือหมายเลขห้อง
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,6 +160,7 @@ const TenantsPage = () => {
                 <TableRow>
                   <TableHead>ผู้เช่า</TableHead>
                   <TableHead>เบอร์โทร</TableHead>
+                  <TableHead>ห้องที่เช่า</TableHead>
                   <TableHead>ที่อยู่</TableHead>
                   <TableHead>วันที่เพิ่ม</TableHead>
                   <TableHead className="w-[100px]">จัดการ</TableHead>
@@ -159,7 +169,7 @@ const TenantsPage = () => {
               <TableBody>
                 {filteredTenants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <Users className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">ไม่มีข้อมูลผู้เช่า</p>
@@ -189,7 +199,24 @@ const TenantsPage = () => {
                           </div>
                         </TableCell>
                         <TableCell>{tenant.phone || "-"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">
+                        <TableCell>
+                          {tenant.current_room ? (
+                            <div className="flex items-center gap-2">
+                              <Home className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <Badge variant="secondary" className="text-xs">
+                                  ห้อง {tenant.current_room.room_number}
+                                </Badge>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {tenant.current_room.room_type} • ชั้น {tenant.current_room.floor}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">ไม่ได้เช่าห้อง</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[150px] truncate">
                           {tenant.address || "-"}
                         </TableCell>
                         <TableCell>

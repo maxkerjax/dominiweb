@@ -50,7 +50,7 @@ export const useTenants = () => {
             .from('occupancy')
             .select(`
               room_id,
-              rooms!inner(
+              rooms!occupancy_room_id_fkey(
                 id,
                 room_number,
                 room_type,
@@ -236,7 +236,7 @@ export const useTenants = () => {
     createTenant: createTenantMutation.mutate,
     updateTenant: updateTenantMutation.mutate,
     deleteTenant: deleteTenantMutation.mutate,
-    assignRoom: assignRoomMutation.mutate,
+    assignRoom: (tenantId: string, roomId: string) => assignRoomMutation.mutate({ tenantId, roomId }),
     isCreating: createTenantMutation.isPending,
     isUpdating: updateTenantMutation.isPending,
     isDeleting: deleteTenantMutation.isPending,

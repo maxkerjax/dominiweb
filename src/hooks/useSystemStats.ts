@@ -30,16 +30,17 @@ export const useSystemStats = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
-      // Calculate monthly revenue from current occupancy
+      // Calculate monthly revenue from current occupancy - fix the relationship query
       const { data: currentOccupancy } = await supabase
         .from('occupancy')
         .select(`
-          rooms!inner(price)
+          room_id,
+          rooms!occupancy_room_id_fkey(price)
         `)
         .eq('is_current', true);
 
       const monthlyRevenue = currentOccupancy?.reduce((total, occupancy) => {
-        return total + (occupancy.rooms.price || 0);
+        return total + (occupancy.rooms?.price || 0);
       }, 0) || 0;
 
       const stats = {

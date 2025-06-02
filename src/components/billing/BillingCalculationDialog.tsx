@@ -30,11 +30,11 @@ interface Occupancy {
   rooms: {
     room_number: string;
     price: number;
-  };
+  } | null;
   tenants: {
     first_name: string;
     last_name: string;
-  };
+  } | null;
 }
 
 interface BillingCalculationDialogProps {
@@ -79,11 +79,11 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
           room_id,
           tenant_id,
           check_in_date,
-          rooms (
+          rooms!occupancy_room_id_fkey (
             room_number,
             price
           ),
-          tenants (
+          tenants!occupancy_tenant_id_fkey (
             first_name,
             last_name
           )
@@ -100,7 +100,17 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
         return;
       }
 
-      setOccupancies(data || []);
+      // Type-safe mapping with null checks
+      const mappedOccupancies: Occupancy[] = (data || []).map(item => ({
+        id: item.id,
+        room_id: item.room_id,
+        tenant_id: item.tenant_id,
+        check_in_date: item.check_in_date,
+        rooms: item.rooms || null,
+        tenants: item.tenants || null
+      }));
+
+      setOccupancies(mappedOccupancies);
     } catch (err) {
       console.error('Error in fetchOccupancies:', err);
       toast({
@@ -112,7 +122,7 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
   };
 
   const selectedOccupancyData = occupancies.find(occ => occ.id === selectedOccupancy);
-  const roomRent = selectedOccupancyData?.rooms.price || 0;
+  const roomRent = selectedOccupancyData?.rooms?.price || 0;
   const waterCost = waterUnits * WATER_RATE;
   const electricityCost = electricityUnits * ELECTRICITY_RATE;
   const totalAmount = roomRent + waterCost + electricityCost;
@@ -211,7 +221,7 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
               <SelectContent>
                 {occupancies.map((occ) => (
                   <SelectItem key={occ.id} value={occ.id}>
-                    ห้อง {occ.rooms.room_number} - {occ.tenants.first_name} {occ.tenants.last_name}
+                    ห้อง {occ.rooms?.room_number || 'N/A'} - {occ.tenants?.first_name || ''} {occ.tenants?.last_name || ''}
                   </SelectItem>
                 ))}
               </SelectContent>

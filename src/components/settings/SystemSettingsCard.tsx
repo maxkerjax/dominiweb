@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,16 @@ export function SystemSettingsCard() {
     lateFee: settings.lateFee,
     depositRate: settings.depositRate
   });
+
+  // Update form settings when settings change
+  useEffect(() => {
+    setFormSettings({
+      waterRate: settings.waterRate,
+      electricityRate: settings.electricityRate,
+      lateFee: settings.lateFee,
+      depositRate: settings.depositRate
+    });
+  }, [settings]);
 
   const handleSystemBackup = async () => {
     setBackupLoading(true);
@@ -50,11 +60,13 @@ export function SystemSettingsCard() {
   };
 
   const handleSaveSettings = async () => {
+    console.log('Saving settings:', formSettings);
     await saveSettings(formSettings);
   };
 
   const handleInputChange = (field: string, value: string) => {
     const numValue = parseFloat(value) || 0;
+    console.log(`Updating ${field} to:`, numValue);
     setFormSettings(prev => ({
       ...prev,
       [field]: numValue

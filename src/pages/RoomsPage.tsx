@@ -92,6 +92,12 @@ export default function RoomsPage() {
         return;
       }
 
+      // Update room 1 capacity to 2 if it's still 1
+      const room1 = data?.find(room => room.room_number === '1');
+      if (room1 && room1.capacity === 1) {
+        await updateRoom1Capacity();
+      }
+
       setRooms(data || []);
     } catch (err) {
       console.error('Error in fetchRooms:', err);
@@ -102,6 +108,25 @@ export default function RoomsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Update room 1 capacity to 2 people
+  const updateRoom1Capacity = async () => {
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ capacity: 2 })
+        .eq('room_number', '1');
+
+      if (error) {
+        console.error('Error updating room 1 capacity:', error);
+        return;
+      }
+
+      console.log('Room 1 capacity updated to 2 people');
+    } catch (err) {
+      console.error('Error in updateRoom1Capacity:', err);
     }
   };
 

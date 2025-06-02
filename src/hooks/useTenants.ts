@@ -182,7 +182,36 @@ export const useTenants = () => {
     mutationFn: async ({ tenantId, roomId }: { tenantId: string; roomId: string }) => {
       console.log('Assigning room:', { tenantId, roomId });
       
-      // First check out any current room
+      // First, check the room capacity and current occupancy
+      const { data: roomData, error: roomError } = await supabase
+        .from('rooms')
+        .select('capacity')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) {
+        console.error('Error fetching room:', roomError);
+        throw roomError;
+      }
+
+      const { data: currentOccupancy, error: occupancyError } = await supabase
+        .from('occupancy')
+        .select('tenant_id')
+        .eq('room_id', roomId)
+        .eq('is_current', true);
+
+      if (occupancyError) {
+        console.error('Error fetching current occupancy:', occupancyError);
+        throw occupancyError;
+      }
+
+      // Check if room has space
+      const currentOccupants = currentOccupancy?.length || 0;
+      if (currentOccupants >= roomData.capacity) {
+        throw new Error('ห้องนี้เต็มแล้ว ไม่สามารถเพิ่มผู้เช่าได้');
+      }
+
+      // Check out from any current room first
       await supabase
         .from('occupancy')
         .update({ 
@@ -209,10 +238,19 @@ export const useTenants = () => {
         throw error;
       }
 
+      // Update room status to occupied if it becomes occupied
+      if (currentOccupants === 0) {
+        await supabase
+          .from('rooms')
+          .update({ status: 'occupied' })
+          .eq('id', roomId);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['available-rooms-with-capacity'] });
       queryClient.invalidateQueries({ queryKey: ['system-stats'] });
       toast({
         title: "สำเร็จ",
@@ -223,7 +261,7 @@ export const useTenants = () => {
       console.error('Assign room error:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถกำหนดห้องได้",
+        description: error.message || "ไม่สามารถกำหนดห้องได้",
         variant: "destructive",
       });
     },

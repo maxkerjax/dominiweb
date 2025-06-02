@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { 
@@ -109,6 +110,7 @@ const roomTypesData: RoomTypeData[] = [
   { name: "Suite", value: 5, color: "#ec4899" },
 ];
 
+// Mock repair types data since repair_type column doesn't exist in the database
 const repairTypesData: RoomTypeData[] = [
   { name: "Plumbing", value: 38, color: "#3b82f6" },
   { name: "Electrical", value: 25, color: "#10b981" },
@@ -205,28 +207,28 @@ const ReportsPage = () => {
       }
     };
 
-    const fetchRepairTypeDistribution = async () => {
+    const fetchRepairStatusDistribution = async () => {
       try {
         const { data, error } = await supabase
           .from('repairs')
-          .select('repair_type');
+          .select('status');
         
         if (error) {
-          console.error('Error fetching repair types:', error);
+          console.error('Error fetching repair statuses:', error);
           return;
         }
 
         if (data && data.length) {
-          // Count repair types manually
-          const repairTypeCounts: { [key: string]: number } = {};
+          // Count repair statuses manually (using status instead of repair_type)
+          const repairStatusCounts: { [key: string]: number } = {};
           data.forEach((repair) => {
-            repairTypeCounts[repair.repair_type] = (repairTypeCounts[repair.repair_type] || 0) + 1;
+            repairStatusCounts[repair.status] = (repairStatusCounts[repair.status] || 0) + 1;
           });
 
           const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
           
-          const formattedData: RoomTypeData[] = Object.entries(repairTypeCounts).map(([repairType, count], index) => ({
-            name: repairType,
+          const formattedData: RoomTypeData[] = Object.entries(repairStatusCounts).map(([repairStatus, count], index) => ({
+            name: repairStatus.charAt(0).toUpperCase() + repairStatus.slice(1), // Capitalize first letter
             value: count,
             color: colors[index % colors.length]
           }));
@@ -237,7 +239,7 @@ const ReportsPage = () => {
           console.log('No repair data found, using mock data');
         }
       } catch (err) {
-        console.error('Error in fetchRepairTypeDistribution:', err);
+        console.error('Error in fetchRepairStatusDistribution:', err);
       }
     };
 
@@ -245,7 +247,7 @@ const ReportsPage = () => {
     if (selectedReport === 'rooms') {
       fetchRoomTypeDistribution();
     } else if (selectedReport === 'repairs') {
-      fetchRepairTypeDistribution();
+      fetchRepairStatusDistribution();
     }
 
   }, [selectedReport]);
@@ -397,7 +399,7 @@ const ReportsPage = () => {
           <Card>
             <CardHeader>
               <CardTitle>Repair Request Analysis</CardTitle>
-              <CardDescription>Distribution of different types of repair requests</CardDescription>
+              <CardDescription>Distribution of repair request statuses</CardDescription>
             </CardHeader>
             <CardContent className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">

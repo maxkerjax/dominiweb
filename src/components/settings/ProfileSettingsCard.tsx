@@ -76,7 +76,8 @@ export function ProfileSettingsCard() {
             phone: formData.phone,
             address: formData.address,
             email: formData.email,
-            auth_email: user.email
+            auth_email: user.email,
+            room_number: "" // Provide empty room_number as required field
           });
 
         if (error) {

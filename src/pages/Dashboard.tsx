@@ -1,7 +1,7 @@
 
 import { useLanguage } from "@/providers/LanguageProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { useSystemStats } from "@/hooks/useSystemStats";
 import { RoomStatsCard } from "@/components/dashboard/RoomStatsCard";
 import { ServiceStatsCard } from "@/components/dashboard/ServiceStatsCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
@@ -13,7 +13,38 @@ import { Badge } from "@/components/ui/badge";
 export default function Dashboard() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { stats, monthlyData, formatCurrency } = useDashboardData();
+  const { data: systemStats, isLoading: statsLoading } = useSystemStats();
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("th-TH", {
+      style: "currency",
+      currency: "THB",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  // Sample monthly data for the chart
+  const monthlyData = [
+    { month: "Jan", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.8 : 140000 },
+    { month: "Feb", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.9 : 150000 },
+    { month: "Mar", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.95 : 160000 },
+    { month: "Apr", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.98 : 165000 },
+    { month: "May", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 1.02 : 170000 },
+    { month: "Jun", revenue: systemStats?.monthlyRevenue || 175000 },
+  ];
+
+  if (statsLoading) {
+    return (
+      <div className="animate-in fade-in duration-500">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -50,16 +81,16 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <RoomStatsCard
-          totalRooms={stats.totalRooms}
-          occupiedRooms={stats.occupiedRooms}
-          vacantRooms={stats.vacantRooms}
+          totalRooms={systemStats?.totalRooms || 0}
+          occupiedRooms={systemStats?.occupiedRooms || 0}
+          vacantRooms={(systemStats?.totalRooms || 0) - (systemStats?.occupiedRooms || 0)}
           t={t}
         />
 
         <ServiceStatsCard
-          monthlyRevenue={stats.monthlyRevenue}
-          pendingRepairs={stats.pendingRepairs}
-          announcements={stats.announcements}
+          monthlyRevenue={systemStats?.monthlyRevenue || 0}
+          pendingRepairs={systemStats?.pendingRepairs || 0}
+          announcements={2}
           formatCurrency={formatCurrency}
           t={t}
         />
@@ -74,8 +105,8 @@ export default function Dashboard() {
         />
 
         <OccupancyVisualization
-          occupiedRooms={stats.occupiedRooms}
-          totalRooms={stats.totalRooms}
+          occupiedRooms={systemStats?.occupiedRooms || 0}
+          totalRooms={systemStats?.totalRooms || 0}
         />
       </div>
     </div>

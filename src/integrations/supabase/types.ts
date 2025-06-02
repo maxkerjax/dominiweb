@@ -15,6 +15,7 @@ export type Database = {
           created_at: string | null
           expiry_date: string | null
           id: string
+          important: boolean | null
           publish_date: string
           title: string
           updated_at: string | null
@@ -24,6 +25,7 @@ export type Database = {
           created_at?: string | null
           expiry_date?: string | null
           id?: string
+          important?: boolean | null
           publish_date?: string
           title: string
           updated_at?: string | null
@@ -33,6 +35,7 @@ export type Database = {
           created_at?: string | null
           expiry_date?: string | null
           id?: string
+          important?: boolean | null
           publish_date?: string
           title?: string
           updated_at?: string | null
@@ -151,6 +154,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_occupancy_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_occupancy_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "occupancy_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -245,9 +262,9 @@ export type Database = {
           created_at: string | null
           description: string
           id: string
-          repair_type: string
           reported_date: string
           room_id: string
+          room_number: string
           status: string
           updated_at: string | null
         }
@@ -256,9 +273,9 @@ export type Database = {
           created_at?: string | null
           description: string
           id?: string
-          repair_type: string
           reported_date?: string
           room_id: string
+          room_number: string
           status?: string
           updated_at?: string | null
         }
@@ -267,9 +284,9 @@ export type Database = {
           created_at?: string | null
           description?: string
           id?: string
-          repair_type?: string
           reported_date?: string
           room_id?: string
+          room_number?: string
           status?: string
           updated_at?: string | null
         }
@@ -280,6 +297,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rooms"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repairs_room_number_fkey"
+            columns: ["room_number"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_number"]
           },
         ]
       }
@@ -293,6 +317,7 @@ export type Database = {
           room_number: string
           room_type: string
           status: string
+          tenants: string | null
           updated_at: string | null
         }
         Insert: {
@@ -304,6 +329,7 @@ export type Database = {
           room_number: string
           room_type: string
           status?: string
+          tenants?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -315,9 +341,18 @@ export type Database = {
           room_number?: string
           room_type?: string
           status?: string
+          tenants?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rooms_tenants_fkey"
+            columns: ["tenants"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenants: {
         Row: {
@@ -330,6 +365,7 @@ export type Database = {
           id: string
           last_name: string
           phone: string | null
+          room_number: string
           updated_at: string | null
         }
         Insert: {
@@ -342,6 +378,7 @@ export type Database = {
           id?: string
           last_name: string
           phone?: string | null
+          room_number: string
           updated_at?: string | null
         }
         Update: {
@@ -354,9 +391,18 @@ export type Database = {
           id?: string
           last_name?: string
           phone?: string | null
+          room_number?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tenants_room_number_fkey"
+            columns: ["room_number"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_number"]
+          },
+        ]
       }
     }
     Views: {

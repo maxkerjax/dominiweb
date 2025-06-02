@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { 
@@ -25,10 +26,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Users, Plus, MoreHorizontal, Eye, Edit, Trash2, Home } from "lucide-react";
+import { Users, Plus, MoreHorizontal, Eye, Edit, Trash2, Home, UserPlus } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import TenantFormDialog from "@/components/tenants/TenantFormDialog";
 import TenantDetailsDialog from "@/components/tenants/TenantDetailsDialog";
+import RoomAssignmentDialog from "@/components/tenants/RoomAssignmentDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tenant = Database['public']['Tables']['tenants']['Row'] & {
@@ -45,6 +47,7 @@ const TenantsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isRoomAssignOpen, setIsRoomAssignOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
@@ -54,9 +57,11 @@ const TenantsPage = () => {
     createTenant,
     updateTenant,
     deleteTenant,
+    assignRoom,
     isCreating,
     isUpdating,
     isDeleting,
+    isAssigningRoom,
   } = useTenants();
 
   const filteredTenants = tenants.filter(tenant => {
@@ -85,6 +90,11 @@ const TenantsPage = () => {
   const handleViewDetails = (tenant: Tenant) => {
     setSelectedTenant(tenant);
     setIsDetailsOpen(true);
+  };
+
+  const handleAssignRoom = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setIsRoomAssignOpen(true);
   };
 
   const handleDeleteTenant = (tenant: Tenant) => {
@@ -234,6 +244,10 @@ const TenantsPage = () => {
                                 <Eye className="mr-2 h-4 w-4" />
                                 ดูรายละเอียด
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAssignRoom(tenant)}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                กำหนดห้อง
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEditTenant(tenant)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 แก้ไข
@@ -271,6 +285,14 @@ const TenantsPage = () => {
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         tenant={selectedTenant}
+      />
+
+      <RoomAssignmentDialog
+        open={isRoomAssignOpen}
+        onOpenChange={setIsRoomAssignOpen}
+        tenant={selectedTenant}
+        onAssignRoom={assignRoom}
+        isLoading={isAssigningRoom}
       />
     </div>
   );

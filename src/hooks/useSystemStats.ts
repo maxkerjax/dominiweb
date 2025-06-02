@@ -6,6 +6,8 @@ export const useSystemStats = () => {
   return useQuery({
     queryKey: ['system-stats'],
     queryFn: async () => {
+      console.log('Fetching system stats...');
+      
       // Get total rooms
       const { count: totalRooms } = await supabase
         .from('rooms')
@@ -28,12 +30,28 @@ export const useSystemStats = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
-      return {
+      // Calculate monthly revenue from current occupancy
+      const { data: currentOccupancy } = await supabase
+        .from('occupancy')
+        .select(`
+          rooms!inner(price)
+        `)
+        .eq('is_current', true);
+
+      const monthlyRevenue = currentOccupancy?.reduce((total, occupancy) => {
+        return total + (occupancy.rooms.price || 0);
+      }, 0) || 0;
+
+      const stats = {
         totalRooms: totalRooms || 0,
         occupiedRooms: occupiedRooms || 0,
         totalTenants: totalTenants || 0,
-        pendingRepairs: pendingRepairs || 0
+        pendingRepairs: pendingRepairs || 0,
+        monthlyRevenue: monthlyRevenue
       };
+
+      console.log('System stats fetched:', stats);
+      return stats;
     },
     refetchInterval: 30000, // Refetch every 30 seconds
   });

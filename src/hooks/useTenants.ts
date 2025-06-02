@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -27,55 +28,57 @@ export const useTenants = () => {
   } = useQuery({
     queryKey: ['tenants'],
     queryFn: async () => {
-      console.log('Fetching tenants with room information...');
-      const { data, error } = await supabase
+      console.log('Fetching tenants...');
+      
+      // First get all tenants
+      const { data: tenantsData, error: tenantsError } = await supabase
         .from('tenants')
-        .select(`
-          *,
-          current_room:occupancy!inner(
-            room_id,
-            rooms!inner(
-              id,
-              room_number,
-              room_type,
-              floor
-            )
-          )
-        `)
-        .eq('occupancy.is_current', true)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching tenants:', error);
-        // If the join fails, fallback to basic tenant data
-        const { data: basicData, error: basicError } = await supabase
-          .from('tenants')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (basicError) {
-          throw basicError;
-        }
-        
-        console.log('Fallback: Tenants fetched without room info:', basicData);
-        return basicData?.map(tenant => ({ ...tenant, current_room: null })) || [];
+      if (tenantsError) {
+        console.error('Error fetching tenants:', tenantsError);
+        throw tenantsError;
       }
 
-      // Transform the data to flatten room information
-      const transformedData = data?.map(tenant => ({
-        ...tenant,
-        current_room: tenant.current_room?.[0]?.rooms ? {
-          id: tenant.current_room[0].rooms.id,
-          room_number: tenant.current_room[0].rooms.room_number,
-          room_type: tenant.current_room[0].rooms.room_type,
-          floor: tenant.current_room[0].rooms.floor,
-        } : null
-      })) || [];
+      console.log('Tenants fetched:', tenantsData);
 
-      console.log('Tenants with room info fetched:', transformedData);
-      return transformedData;
+      // Then get current occupancy with room details for each tenant
+      const tenantsWithRooms = await Promise.all(
+        (tenantsData || []).map(async (tenant) => {
+          const { data: occupancyData } = await supabase
+            .from('occupancy')
+            .select(`
+              room_id,
+              rooms!inner(
+                id,
+                room_number,
+                room_type,
+                floor
+              )
+            `)
+            .eq('tenant_id', tenant.id)
+            .eq('is_current', true)
+            .maybeSingle();
+
+          const current_room = occupancyData?.rooms ? {
+            id: occupancyData.rooms.id,
+            room_number: occupancyData.rooms.room_number,
+            room_type: occupancyData.rooms.room_type,
+            floor: occupancyData.rooms.floor,
+          } : null;
+
+          return {
+            ...tenant,
+            current_room
+          };
+        })
+      );
+
+      console.log('Tenants with room info:', tenantsWithRooms);
+      return tenantsWithRooms;
     },
-    enabled: !!user, // Only fetch when user is authenticated
+    enabled: !!user,
   });
 
   const createTenantMutation = useMutation({
@@ -175,6 +178,57 @@ export const useTenants = () => {
     },
   });
 
+  const assignRoomMutation = useMutation({
+    mutationFn: async ({ tenantId, roomId }: { tenantId: string; roomId: string }) => {
+      console.log('Assigning room:', { tenantId, roomId });
+      
+      // First check out any current room
+      await supabase
+        .from('occupancy')
+        .update({ 
+          is_current: false, 
+          check_out_date: new Date().toISOString().split('T')[0] 
+        })
+        .eq('tenant_id', tenantId)
+        .eq('is_current', true);
+
+      // Then create new occupancy record
+      const { data, error } = await supabase
+        .from('occupancy')
+        .insert({
+          tenant_id: tenantId,
+          room_id: roomId,
+          check_in_date: new Date().toISOString().split('T')[0],
+          is_current: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error assigning room:', error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['system-stats'] });
+      toast({
+        title: "สำเร็จ",
+        description: "กำหนดห้องให้ผู้เช่าเรียบร้อยแล้ว",
+      });
+    },
+    onError: (error) => {
+      console.error('Assign room error:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถกำหนดห้องได้",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     tenants,
     isLoading,
@@ -182,8 +236,10 @@ export const useTenants = () => {
     createTenant: createTenantMutation.mutate,
     updateTenant: updateTenantMutation.mutate,
     deleteTenant: deleteTenantMutation.mutate,
+    assignRoom: assignRoomMutation.mutate,
     isCreating: createTenantMutation.isPending,
     isUpdating: updateTenantMutation.isPending,
     isDeleting: deleteTenantMutation.isPending,
+    isAssigningRoom: assignRoomMutation.isPending,
   };
 };

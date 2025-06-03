@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -53,8 +52,8 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
   const [electricityUnits, setElectricityUnits] = useState<number>(0);
   const [dueDate, setDueDate] = useState("");
 
-  const WATER_RATE = 100; // บาทต่อคน
-  const ELECTRICITY_RATE = 7; // บาทต่อหน่วย
+  const WATER_RATE = 100; // บาทต่อหัว (คน)
+  const ELECTRICITY_RATE = 8; // บาทต่อหน่วย
 
   useEffect(() => {
     if (open) {
@@ -206,7 +205,7 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
             คำนวณค่าใช้จ่าย
           </DialogTitle>
           <DialogDescription>
-            คำนวณค่าห้อง + ค่าน้ำ + ค่าไฟสำหรับผู้เช่า
+            คำนวณค่าห้อง + ค่าน้ำ (หัวละ 100 บาท) + ค่าไฟ (หน่วยละ 8 บาท) สำหรับผู้เช่า
           </DialogDescription>
         </DialogHeader>
         
@@ -269,7 +268,7 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
                 <div className="flex items-center justify-between p-3 bg-white rounded border">
                   <div className="flex items-center gap-2">
                     <Droplet className="h-4 w-4 text-blue-600" />
-                    <span>ค่าน้ำ ({WATER_RATE} บาท/คน)</span>
+                    <span>ค่าน้ำ (หัวละ {WATER_RATE} บาท)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -279,7 +278,7 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
                       min="1"
                       className="w-20"
                     />
-                    <span>คน</span>
+                    <span>หัว</span>
                     <span className="font-medium ml-2">{waterCost.toLocaleString()} บาท</span>
                   </div>
                 </div>
@@ -290,7 +289,7 @@ export default function BillingCalculationDialog({ open, onOpenChange, onBilling
                 <div className="flex items-center justify-between p-3 bg-white rounded border">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-yellow-600" />
-                    <span>ค่าไฟ ({ELECTRICITY_RATE} บาท/หน่วย)</span>
+                    <span>ค่าไฟ (หน่วยละ {ELECTRICITY_RATE} บาท)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input

@@ -117,13 +117,16 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
       const occupancyData = occupancies.find(occ => occ.id === selectedOccupancy);
       if (!occupancyData) return;
 
+      // Convert billingMonth from YYYY-MM format to YYYY-MM-01 for database
+      const billingDate = billingMonth + '-01';
+
       const { error } = await supabase
         .from('billing')
         .insert({
           occupancy_id: selectedOccupancy,
           room_id: occupancyData.room_id,
           tenant_id: occupancyData.tenant_id,
-          billing_month: billingMonth,
+          billing_month: billingDate,
           room_rent: roomRent,
           water_units: waterUnits,
           water_cost: waterCost,

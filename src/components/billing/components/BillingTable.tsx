@@ -43,12 +43,14 @@ interface BillingTableProps {
   billings: BillingRecord[];
   filteredBillings: BillingRecord[];
   onMarkAsPaid: (billingId: string) => void;
+  onViewDetails: (billing: BillingRecord) => void;
 }
 
 export default function BillingTable({ 
   billings, 
   filteredBillings, 
-  onMarkAsPaid 
+  onMarkAsPaid,
+  onViewDetails
 }: BillingTableProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
@@ -136,7 +138,13 @@ export default function BillingTable({
                             ชำระแล้ว
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm">ดูรายละเอียด</Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => onViewDetails(billing)}
+                        >
+                          ดูรายละเอียด
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

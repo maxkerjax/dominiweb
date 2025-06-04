@@ -3,7 +3,9 @@ import BillingCalculationDialog from "@/components/billing/BillingCalculationDia
 import BillingHeader from "@/components/billing/components/BillingHeader";
 import BillingFilters from "@/components/billing/components/BillingFilters";
 import BillingTable from "@/components/billing/components/BillingTable";
+import BillingDetailDialog from "@/components/billing/components/BillingDetailDialog";
 import { useBillingPage } from "@/components/billing/hooks/useBillingPage";
+import { useBillingDetail } from "@/components/billing/hooks/useBillingDetail";
 
 const BillingPage = () => {
   const {
@@ -19,6 +21,14 @@ const BillingPage = () => {
     fetchBillings,
     handleMarkAsPaid
   } = useBillingPage();
+
+  const {
+    selectedBilling,
+    isDetailDialogOpen,
+    openDetailDialog,
+    closeDetailDialog,
+    setIsDetailDialogOpen
+  } = useBillingDetail();
 
   if (loading) {
     return (
@@ -48,12 +58,19 @@ const BillingPage = () => {
         billings={billings}
         filteredBillings={filteredBillings}
         onMarkAsPaid={handleMarkAsPaid}
+        onViewDetails={openDetailDialog}
       />
 
       <BillingCalculationDialog
         open={showCalculationDialog}
         onOpenChange={setShowCalculationDialog}
         onBillingCreated={fetchBillings}
+      />
+
+      <BillingDetailDialog
+        open={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        billing={selectedBilling}
       />
     </div>
   );

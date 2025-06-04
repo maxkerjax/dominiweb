@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useOccupancyData } from "./useOccupancyData";
 import { useBillingFormState } from "./useBillingFormState";
-import { useBillingCalculation as useCalculation } from "./useBillingCalculation";
+import { useBillingCalculationLogic } from "./useBillingCalculationLogic";
 import { createBillingRecord } from "../utils/billingApi";
 
 export const useBillingCalculation = (open: boolean, onBillingCreated: () => void, onOpenChange: (open: boolean) => void) => {
@@ -34,7 +34,7 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
     totalAmount,
     WATER_RATE,
     ELECTRICITY_RATE
-  } = useCalculation(occupancies, selectedOccupancy, waterUnits, electricityUnits);
+  } = useBillingCalculationLogic(occupancies, selectedOccupancy, waterUnits, electricityUnits);
 
   const handleCreateBilling = async () => {
     if (!selectedOccupancy || !billingMonth || !dueDate) {

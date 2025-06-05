@@ -19,6 +19,7 @@ import {
   Legend,
   TooltipProps,
 } from "recharts";
+import { useReportsData } from "../hooks/useReportsData";
 
 // Create custom tooltip component
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
@@ -26,29 +27,30 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
     return (
       <div className="bg-background border border-border p-2 rounded-md shadow-md">
         <p className="font-medium">{`${label}`}</p>
-        <p className="text-primary">{`${payload[0].name}: ${payload[0].value}`}</p>
+        <p className="text-primary">{`${payload[0].name}: ${payload[0].value}%`}</p>
       </div>
     );
   }
   return null;
 };
 
-const monthlyOccupancyData = [
-  { month: "Jan", occupancy: 85 },
-  { month: "Feb", occupancy: 88 },
-  { month: "Mar", occupancy: 90 },
-  { month: "Apr", occupancy: 92 },
-  { month: "May", occupancy: 95 },
-  { month: "Jun", occupancy: 94 },
-  { month: "Jul", occupancy: 92 },
-  { month: "Aug", occupancy: 90 },
-  { month: "Sep", occupancy: 93 },
-  { month: "Oct", occupancy: 94 },
-  { month: "Nov", occupancy: 96 },
-  { month: "Dec", occupancy: 89 },
-];
-
 export const OccupancyChart = () => {
+  const { occupancyData, isLoading } = useReportsData('occupancy');
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Occupancy Trends</CardTitle>
+          <CardDescription>Monthly occupancy rates for the dormitory</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[400px] flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -69,7 +71,7 @@ export const OccupancyChart = () => {
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={monthlyOccupancyData}
+              data={occupancyData}
               margin={{
                 top: 5,
                 right: 30,

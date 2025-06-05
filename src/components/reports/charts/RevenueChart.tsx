@@ -19,42 +19,45 @@ import {
   Legend,
   TooltipProps,
 } from "recharts";
+import { useReportsData } from "../hooks/useReportsData";
 
 // Create custom tooltip component
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
+    const amount = payload[0].value as number;
     return (
       <div className="bg-background border border-border p-2 rounded-md shadow-md">
         <p className="font-medium">{`${label}`}</p>
-        <p className="text-primary">{`${payload[0].name}: ${payload[0].value}`}</p>
+        <p className="text-primary">{`${payload[0].name}: ${formatCurrency(amount)}`}</p>
       </div>
     );
   }
   return null;
 };
 
-const monthlyRevenueData = [
-  { month: "Jan", revenue: 42500 },
-  { month: "Feb", revenue: 44000 },
-  { month: "Mar", revenue: 45000 },
-  { month: "Apr", revenue: 46000 },
-  { month: "May", revenue: 47500 },
-  { month: "Jun", revenue: 47000 },
-  { month: "Jul", revenue: 46000 },
-  { month: "Aug", revenue: 45000 },
-  { month: "Sep", revenue: 46500 },
-  { month: "Oct", revenue: 47000 },
-  { month: "Nov", revenue: 48000 },
-  { month: "Dec", revenue: 44500 },
-];
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('th-TH', {
+    style: 'currency',
+    currency: 'THB'
+  }).format(amount);
+};
 
 export const RevenueChart = () => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+  const { revenueData, isLoading } = useReportsData('revenue');
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Revenue Analysis</CardTitle>
+          <CardDescription>Monthly revenue data for the dormitory</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[400px] flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -76,7 +79,7 @@ export const RevenueChart = () => {
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={monthlyRevenueData}
+              data={revenueData}
               margin={{
                 top: 5,
                 right: 30,

@@ -13,6 +13,7 @@ import {
   Cell,
   Tooltip,
 } from "recharts";
+import { useReportsData } from "../hooks/useReportsData";
 
 type RoomTypeData = {
   name: string;
@@ -21,16 +22,28 @@ type RoomTypeData = {
 };
 
 interface PieChartsProps {
-  roomTypeDistribution: RoomTypeData[];
-  repairTypeDistribution: RoomTypeData[];
   selectedReport: string;
 }
 
-export const PieCharts = ({ 
-  roomTypeDistribution, 
-  repairTypeDistribution, 
-  selectedReport 
-}: PieChartsProps) => {
+export const PieCharts = ({ selectedReport }: PieChartsProps) => {
+  const { roomTypeDistribution, repairTypeDistribution, isLoading } = useReportsData(selectedReport);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {selectedReport === "rooms" ? "Room Type Distribution" : "Repair Request Analysis"}
+          </CardTitle>
+          <CardDescription>Loading data...</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[400px] flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (selectedReport === "rooms") {
     return (
       <Card>

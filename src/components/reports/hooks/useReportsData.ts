@@ -8,29 +8,28 @@ type RoomTypeData = {
   color: string;
 };
 
-const mockRoomTypesData: RoomTypeData[] = [
-  { name: "Standard Single", value: 35, color: "#3b82f6" },
-  { name: "Standard Double", value: 25, color: "#10b981" },
-  { name: "Deluxe Single", value: 20, color: "#f59e0b" },
-  { name: "Deluxe Double", value: 15, color: "#6366f1" },
-  { name: "Suite", value: 5, color: "#ec4899" },
-];
+type OccupancyData = {
+  month: string;
+  occupancy: number;
+};
 
-const mockRepairTypesData: RoomTypeData[] = [
-  { name: "Plumbing", value: 38, color: "#3b82f6" },
-  { name: "Electrical", value: 25, color: "#10b981" },
-  { name: "Furniture", value: 15, color: "#f59e0b" },
-  { name: "HVAC", value: 12, color: "#6366f1" },
-  { name: "Other", value: 10, color: "#ec4899" },
-];
+type RevenueData = {
+  month: string;
+  revenue: number;
+};
+
+const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
 
 export const useReportsData = (selectedReport: string) => {
-  const [roomTypeDistribution, setRoomTypeDistribution] = useState<RoomTypeData[]>(mockRoomTypesData);
-  const [repairTypeDistribution, setRepairTypeDistribution] = useState<RoomTypeData[]>(mockRepairTypesData);
+  const [roomTypeDistribution, setRoomTypeDistribution] = useState<RoomTypeData[]>([]);
+  const [repairTypeDistribution, setRepairTypeDistribution] = useState<RoomTypeData[]>([]);
+  const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchRoomTypeDistribution = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from('rooms')
@@ -47,8 +46,6 @@ export const useReportsData = (selectedReport: string) => {
             roomTypeCounts[room.room_type] = (roomTypeCounts[room.room_type] || 0) + 1;
           });
 
-          const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
-          
           const formattedData: RoomTypeData[] = Object.entries(roomTypeCounts).map(([roomType, count], index) => ({
             name: roomType,
             value: count,
@@ -59,10 +56,13 @@ export const useReportsData = (selectedReport: string) => {
         }
       } catch (err) {
         console.error('Error in fetchRoomTypeDistribution:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     const fetchRepairStatusDistribution = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from('repairs')
@@ -79,8 +79,6 @@ export const useReportsData = (selectedReport: string) => {
             repairStatusCounts[repair.status] = (repairStatusCounts[repair.status] || 0) + 1;
           });
 
-          const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
-          
           const formattedData: RoomTypeData[] = Object.entries(repairStatusCounts).map(([repairStatus, count], index) => ({
             name: repairStatus.charAt(0).toUpperCase() + repairStatus.slice(1),
             value: count,
@@ -88,11 +86,105 @@ export const useReportsData = (selectedReport: string) => {
           }));
           
           setRepairTypeDistribution(formattedData);
-        } else {
-          console.log('No repair data found, using mock data');
         }
       } catch (err) {
         console.error('Error in fetchRepairStatusDistribution:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchOccupancyData = async () => {
+      setIsLoading(true);
+      try {
+        // Get total rooms
+        const { data: roomsData, error: roomsError } = await supabase
+          .from('rooms')
+          .select('id');
+
+        if (roomsError) {
+          console.error('Error fetching rooms:', roomsError);
+          return;
+        }
+
+        const totalRooms = roomsData?.length || 0;
+
+        // Get occupancy data for the last 12 months
+        const monthlyData: OccupancyData[] = [];
+        const today = new Date();
+        
+        for (let i = 11; i >= 0; i--) {
+          const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const monthName = targetDate.toLocaleDateString('en-US', { month: 'short' });
+          
+          const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+          const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+
+          const { data: occupancyData, error: occupancyError } = await supabase
+            .from('occupancy')
+            .select('room_id')
+            .lte('check_in_date', endOfMonth.toISOString().split('T')[0])
+            .or(`check_out_date.is.null,check_out_date.gte.${startOfMonth.toISOString().split('T')[0]}`);
+
+          if (occupancyError) {
+            console.error('Error fetching occupancy data:', occupancyError);
+            continue;
+          }
+
+          const occupiedRooms = occupancyData?.length || 0;
+          const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+
+          monthlyData.push({
+            month: monthName,
+            occupancy: occupancyRate
+          });
+        }
+
+        setOccupancyData(monthlyData);
+      } catch (err) {
+        console.error('Error in fetchOccupancyData:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchRevenueData = async () => {
+      setIsLoading(true);
+      try {
+        const monthlyData: RevenueData[] = [];
+        const today = new Date();
+        
+        for (let i = 11; i >= 0; i--) {
+          const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const monthName = targetDate.toLocaleDateString('en-US', { month: 'short' });
+          
+          const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+          const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+
+          const { data: billingData, error: billingError } = await supabase
+            .from('billing')
+            .select('total_amount')
+            .gte('billing_month', startOfMonth.toISOString().split('T')[0])
+            .lte('billing_month', endOfMonth.toISOString().split('T')[0]);
+
+          if (billingError) {
+            console.error('Error fetching billing data:', billingError);
+            continue;
+          }
+
+          const totalRevenue = billingData?.reduce((sum, bill) => sum + Number(bill.total_amount), 0) || 0;
+
+          monthlyData.push({
+            month: monthName,
+            revenue: totalRevenue
+          });
+        }
+
+        setRevenueData(monthlyData);
+      } catch (err) {
+        console.error('Error in fetchRevenueData:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -100,6 +192,10 @@ export const useReportsData = (selectedReport: string) => {
       fetchRoomTypeDistribution();
     } else if (selectedReport === 'repairs') {
       fetchRepairStatusDistribution();
+    } else if (selectedReport === 'occupancy') {
+      fetchOccupancyData();
+    } else if (selectedReport === 'revenue') {
+      fetchRevenueData();
     }
 
   }, [selectedReport]);
@@ -107,6 +203,8 @@ export const useReportsData = (selectedReport: string) => {
   return {
     roomTypeDistribution,
     repairTypeDistribution,
+    occupancyData,
+    revenueData,
     isLoading
   };
 };

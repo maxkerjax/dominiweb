@@ -8,14 +8,11 @@ import { OccupancyChart } from "@/components/reports/charts/OccupancyChart";
 import { RevenueChart } from "@/components/reports/charts/RevenueChart";
 import { PieCharts } from "@/components/reports/charts/PieCharts";
 import { EventsChart } from "@/components/reports/charts/EventsChart";
-import { useReportsData } from "@/components/reports/hooks/useReportsData";
 
 const ReportsPage = () => {
   const { t } = useLanguage();
   const [selectedReport, setSelectedReport] = useState("occupancy");
   const [timeFrame, setTimeFrame] = useState("year");
-  
-  const { roomTypeDistribution, repairTypeDistribution } = useReportsData(selectedReport);
 
   const renderReport = () => {
     switch(selectedReport) {
@@ -25,13 +22,7 @@ const ReportsPage = () => {
         return <RevenueChart />;
       case "rooms":
       case "repairs":
-        return (
-          <PieCharts
-            roomTypeDistribution={roomTypeDistribution}
-            repairTypeDistribution={repairTypeDistribution}
-            selectedReport={selectedReport}
-          />
-        );
+        return <PieCharts selectedReport={selectedReport} />;
       case "events":
         return <EventsChart />;
       default:

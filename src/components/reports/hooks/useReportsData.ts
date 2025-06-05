@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,6 +17,13 @@ type RevenueData = {
   revenue: number;
 };
 
+type EventAttendanceData = {
+  month: string;
+  events: number;
+  attendees: number;
+  averageAttendance: number;
+};
+
 const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#64748b"];
 
 export const useReportsData = (selectedReport: string) => {
@@ -25,6 +31,7 @@ export const useReportsData = (selectedReport: string) => {
   const [repairTypeDistribution, setRepairTypeDistribution] = useState<RoomTypeData[]>([]);
   const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [eventAttendanceData, setEventAttendanceData] = useState<EventAttendanceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -188,6 +195,67 @@ export const useReportsData = (selectedReport: string) => {
       }
     };
 
+    const fetchEventAttendanceData = async () => {
+      setIsLoading(true);
+      try {
+        const monthlyData: EventAttendanceData[] = [];
+        const today = new Date();
+        
+        for (let i = 11; i >= 0; i--) {
+          const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const monthName = targetDate.toLocaleDateString('en-US', { month: 'short' });
+          
+          const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+          const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+
+          // Get events in this month
+          const { data: eventsData, error: eventsError } = await supabase
+            .from('events')
+            .select('id')
+            .gte('event_date', startOfMonth.toISOString().split('T')[0])
+            .lte('event_date', endOfMonth.toISOString().split('T')[0]);
+
+          if (eventsError) {
+            console.error('Error fetching events:', eventsError);
+            continue;
+          }
+
+          const eventIds = eventsData?.map(event => event.id) || [];
+          let totalAttendees = 0;
+
+          if (eventIds.length > 0) {
+            // Get attendance for these events
+            const { data: attendanceData, error: attendanceError } = await supabase
+              .from('event_attendance')
+              .select('id')
+              .in('event_id', eventIds)
+              .eq('attended', true);
+
+            if (attendanceError) {
+              console.error('Error fetching attendance:', attendanceError);
+            } else {
+              totalAttendees = attendanceData?.length || 0;
+            }
+          }
+
+          const averageAttendance = eventIds.length > 0 ? Math.round(totalAttendees / eventIds.length) : 0;
+
+          monthlyData.push({
+            month: monthName,
+            events: eventIds.length,
+            attendees: totalAttendees,
+            averageAttendance: averageAttendance
+          });
+        }
+
+        setEventAttendanceData(monthlyData);
+      } catch (err) {
+        console.error('Error in fetchEventAttendanceData:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (selectedReport === 'rooms') {
       fetchRoomTypeDistribution();
     } else if (selectedReport === 'repairs') {
@@ -196,6 +264,8 @@ export const useReportsData = (selectedReport: string) => {
       fetchOccupancyData();
     } else if (selectedReport === 'revenue') {
       fetchRevenueData();
+    } else if (selectedReport === 'events') {
+      fetchEventAttendanceData();
     }
 
   }, [selectedReport]);
@@ -205,6 +275,7 @@ export const useReportsData = (selectedReport: string) => {
     repairTypeDistribution,
     occupancyData,
     revenueData,
+    eventAttendanceData,
     isLoading
   };
 };

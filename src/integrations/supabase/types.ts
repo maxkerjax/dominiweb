@@ -203,6 +203,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_current: boolean | null
+          latest_meter_reading: number | null
           room_id: string
           tenant_id: string
           updated_at: string | null
@@ -213,6 +214,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_current?: boolean | null
+          latest_meter_reading?: number | null
           room_id: string
           tenant_id: string
           updated_at?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_current?: boolean | null
+          latest_meter_reading?: number | null
           room_id?: string
           tenant_id?: string
           updated_at?: string | null

@@ -25,9 +25,7 @@ export default function CostBreakdown({
   onWaterUnitsChange,
   waterCost,
   electricityUnits,
-  onElectricityUnitsChange,
   previousMeterReading,
-  onPreviousMeterReadingChange,
   currentMeterReading,
   onCurrentMeterReadingChange,
   electricityCost,
@@ -77,18 +75,12 @@ export default function CostBreakdown({
             <span>ค่าไฟ (หน่วยละ {ELECTRICITY_RATE} บาท)</span>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">เลขมิเตอร์เก่า</label>
-              <Input
-                type="number"
-                value={previousMeterReading}
-                onChange={(e) => onPreviousMeterReadingChange(Number(e.target.value))}
-                min="0"
-                step="0.1"
-                placeholder="0.0"
-              />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <span className="text-sm text-gray-600">เลขมิเตอร์เก่า:</span>
+              <span className="font-medium">{previousMeterReading.toFixed(1)}</span>
             </div>
+            
             <div>
               <label className="block text-sm text-gray-600 mb-1">เลขมิเตอร์ใหม่</label>
               <Input
@@ -97,7 +89,7 @@ export default function CostBreakdown({
                 onChange={(e) => onCurrentMeterReadingChange(Number(e.target.value))}
                 min="0"
                 step="0.1"
-                placeholder="0.0"
+                placeholder="กรอกเลขมิเตอร์ใหม่"
               />
             </div>
           </div>

@@ -36,6 +36,10 @@ export default function BillingCalculationDialog({
     setWaterUnits,
     electricityUnits,
     setElectricityUnits,
+    previousMeterReading,
+    setPreviousMeterReading,
+    currentMeterReading,
+    setCurrentMeterReading,
     dueDate,
     setDueDate,
     selectedOccupancyData,
@@ -83,6 +87,10 @@ export default function BillingCalculationDialog({
               waterCost={waterCost}
               electricityUnits={electricityUnits}
               onElectricityUnitsChange={setElectricityUnits}
+              previousMeterReading={previousMeterReading}
+              onPreviousMeterReadingChange={setPreviousMeterReading}
+              currentMeterReading={currentMeterReading}
+              onCurrentMeterReadingChange={setCurrentMeterReading}
               electricityCost={electricityCost}
               totalAmount={totalAmount}
               WATER_RATE={WATER_RATE}

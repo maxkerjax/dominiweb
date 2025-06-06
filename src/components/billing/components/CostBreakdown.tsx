@@ -9,6 +9,10 @@ interface CostBreakdownProps {
   waterCost: number;
   electricityUnits: number;
   onElectricityUnitsChange: (value: number) => void;
+  previousMeterReading: number;
+  onPreviousMeterReadingChange: (value: number) => void;
+  currentMeterReading: number;
+  onCurrentMeterReadingChange: (value: number) => void;
   electricityCost: number;
   totalAmount: number;
   WATER_RATE: number;
@@ -22,6 +26,10 @@ export default function CostBreakdown({
   waterCost,
   electricityUnits,
   onElectricityUnitsChange,
+  previousMeterReading,
+  onPreviousMeterReadingChange,
+  currentMeterReading,
+  onCurrentMeterReadingChange,
   electricityCost,
   totalAmount,
   WATER_RATE,
@@ -63,22 +71,40 @@ export default function CostBreakdown({
 
       {/* Electricity Cost */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between p-3 bg-white rounded border">
-          <div className="flex items-center gap-2">
+        <div className="p-3 bg-white rounded border">
+          <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-yellow-600" />
             <span>ค่าไฟ (หน่วยละ {ELECTRICITY_RATE} บาท)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              value={electricityUnits}
-              onChange={(e) => onElectricityUnitsChange(Number(e.target.value))}
-              min="0"
-              step="0.1"
-              className="w-24"
-            />
-            <span>หน่วย</span>
-            <span className="font-medium ml-2">{electricityCost.toLocaleString()} บาท</span>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">เลขมิเตอร์เก่า</label>
+              <Input
+                type="number"
+                value={previousMeterReading}
+                onChange={(e) => onPreviousMeterReadingChange(Number(e.target.value))}
+                min="0"
+                step="0.1"
+                placeholder="0.0"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">เลขมิเตอร์ใหม่</label>
+              <Input
+                type="number"
+                value={currentMeterReading}
+                onChange={(e) => onCurrentMeterReadingChange(Number(e.target.value))}
+                min="0"
+                step="0.1"
+                placeholder="0.0"
+              />
+            </div>
+          </div>
+          
+          <div className="mt-3 p-2 bg-gray-50 rounded border flex justify-between items-center">
+            <span className="text-sm text-gray-600">หน่วยที่ใช้:</span>
+            <span className="font-medium">{electricityUnits.toFixed(1)} หน่วย = {electricityCost.toLocaleString()} บาท</span>
           </div>
         </div>
       </div>

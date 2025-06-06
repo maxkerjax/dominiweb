@@ -6,6 +6,8 @@ export const useBillingFormState = (open: boolean) => {
   const [billingMonth, setBillingMonth] = useState("");
   const [waterUnits, setWaterUnits] = useState<number>(1);
   const [electricityUnits, setElectricityUnits] = useState<number>(0);
+  const [previousMeterReading, setPreviousMeterReading] = useState<number>(0);
+  const [currentMeterReading, setCurrentMeterReading] = useState<number>(0);
   const [dueDate, setDueDate] = useState("");
 
   useEffect(() => {
@@ -21,10 +23,18 @@ export const useBillingFormState = (open: boolean) => {
     }
   }, [open]);
 
+  // Calculate electricity units from meter readings
+  useEffect(() => {
+    const calculatedUnits = Math.max(0, currentMeterReading - previousMeterReading);
+    setElectricityUnits(calculatedUnits);
+  }, [currentMeterReading, previousMeterReading]);
+
   const resetForm = () => {
     setSelectedOccupancy("");
     setWaterUnits(1);
     setElectricityUnits(0);
+    setPreviousMeterReading(0);
+    setCurrentMeterReading(0);
     setBillingMonth("");
     setDueDate("");
   };
@@ -38,6 +48,10 @@ export const useBillingFormState = (open: boolean) => {
     setWaterUnits,
     electricityUnits,
     setElectricityUnits,
+    previousMeterReading,
+    setPreviousMeterReading,
+    currentMeterReading,
+    setCurrentMeterReading,
     dueDate,
     setDueDate,
     resetForm

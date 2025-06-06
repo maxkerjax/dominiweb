@@ -429,6 +429,39 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deposit_rate: number
+          electricity_rate: number
+          id: string
+          late_fee: number
+          updated_at: string
+          water_rate: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deposit_rate?: number
+          electricity_rate?: number
+          id?: string
+          late_fee?: number
+          updated_at?: string
+          water_rate?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deposit_rate?: number
+          electricity_rate?: number
+          id?: string
+          late_fee?: number
+          updated_at?: string
+          water_rate?: number
+        }
+        Relationships: []
+      }
       tenants: {
         Row: {
           address: string | null
@@ -484,7 +517,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

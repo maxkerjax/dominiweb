@@ -1,5 +1,6 @@
 
 import { useMemo } from "react";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 interface Occupancy {
   id: string;
@@ -22,16 +23,15 @@ export const useBillingCalculationLogic = (
   waterUnits: number,
   electricityUnits: number
 ) => {
-  const WATER_RATE = 100;
-  const ELECTRICITY_RATE = 8;
+  const { settings } = useSystemSettings();
 
   const selectedOccupancyData = useMemo(() => {
     return occupancies.find(occ => occ.id === selectedOccupancy);
   }, [occupancies, selectedOccupancy]);
 
   const roomRent = selectedOccupancyData?.rooms?.price || 0;
-  const waterCost = waterUnits * WATER_RATE;
-  const electricityCost = electricityUnits * ELECTRICITY_RATE;
+  const waterCost = waterUnits * settings.waterRate;
+  const electricityCost = electricityUnits * settings.electricityRate;
   const totalAmount = roomRent + waterCost + electricityCost;
 
   return {
@@ -40,7 +40,7 @@ export const useBillingCalculationLogic = (
     waterCost,
     electricityCost,
     totalAmount,
-    WATER_RATE,
-    ELECTRICITY_RATE
+    WATER_RATE: settings.waterRate,
+    ELECTRICITY_RATE: settings.electricityRate
   };
 };

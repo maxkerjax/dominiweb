@@ -57,7 +57,7 @@ export default function BillingCalculationDialog({
             คำนวณค่าใช้จ่าย
           </DialogTitle>
           <DialogDescription>
-            คำนวณค่าห้อง + ค่าน้ำ (หัวละ 100 บาท) + ค่าไฟ (หน่วยละ 8 บาท) สำหรับผู้เช่า
+            คำนวณค่าห้อง + ค่าน้ำ (หัวละ {WATER_RATE} บาท) + ค่าไฟ (หน่วยละ {ELECTRICITY_RATE} บาท) สำหรับผู้เช่า
           </DialogDescription>
         </DialogHeader>
         

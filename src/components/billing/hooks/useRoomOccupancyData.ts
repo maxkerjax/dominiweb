@@ -60,7 +60,7 @@ export const useRoomOccupancyData = (shouldFetch: boolean) => {
       // Group by room_id and aggregate data
       const roomMap = new Map<string, RoomOccupancy>();
 
-      (data || []).forEach(item => {
+      (occupancyData || []).forEach(item => {
         const roomId = item.room_id;
         
         if (!roomMap.has(roomId)) {

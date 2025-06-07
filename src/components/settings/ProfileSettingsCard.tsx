@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Mail, Phone, MapPin } from "lucide-react";
+import { User, Mail, Phone, MapPin, AlertCircle, Home, Building } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 export function ProfileSettingsCard() {
   const { user } = useAuth();
@@ -18,7 +19,8 @@ export function ProfileSettingsCard() {
     lastName: "",
     phone: "",
     address: "",
-    email: user?.email || ""
+    email: user?.email || "",
+    emergencyContact: ""
   });
 
   useEffect(() => {
@@ -28,10 +30,10 @@ export function ProfileSettingsCard() {
         lastName: user.tenant.last_name || "",
         phone: user.tenant.phone || "",
         address: user.tenant.address || "",
-        email: user.tenant.email || user.email || ""
+        email: user.tenant.email || user.email || "",
+        emergencyContact: user.tenant.emergency_contact || ""
       });
     } else if (user?.email) {
-      // If no tenant data but user exists, set email at least
       setFormData(prev => ({
         ...prev,
         email: user.email
@@ -45,18 +47,25 @@ export function ProfileSettingsCard() {
       return;
     }
 
+    // Validate required fields
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      toast.error("กรุณากรอกชื่อและนามสกุล");
+      return;
+    }
+
     setLoading(true);
     try {
-      // If user is a tenant with tenant data, update tenant table
       if (user.tenant?.id) {
+        // Update existing tenant record
         const { error } = await supabase
           .from('tenants')
           .update({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            address: formData.address,
-            email: formData.email,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
+            phone: formData.phone.trim(),
+            address: formData.address.trim(),
+            email: formData.email.trim(),
+            emergency_contact: formData.emergencyContact.trim(),
             updated_at: new Date().toISOString()
           })
           .eq('id', user.tenant.id);
@@ -67,17 +76,18 @@ export function ProfileSettingsCard() {
           return;
         }
       } else if (user.role === 'tenant') {
-        // If user is tenant but no tenant record exists, create one
+        // Create new tenant record
         const { error } = await supabase
           .from('tenants')
           .insert({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            address: formData.address,
-            email: formData.email,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
+            phone: formData.phone.trim(),
+            address: formData.address.trim(),
+            email: formData.email.trim(),
+            emergency_contact: formData.emergencyContact.trim(),
             auth_email: user.email,
-            room_number: "" // Provide empty room_number as required field
+            room_number: ""
           });
 
         if (error) {
@@ -100,8 +110,6 @@ export function ProfileSettingsCard() {
             .eq('id', user.id);
         }
       } else {
-        // For admin/staff, we might want to store basic info somewhere else
-        // or just show a message that profile editing is for tenants only
         toast.info("การแก้ไขโปรไฟล์รองรับเฉพาะผู้เช่าเท่านั้น");
         return;
       }
@@ -149,10 +157,12 @@ export function ProfileSettingsCard() {
             <div>
               <h3 className="text-lg font-medium">{user?.name}</h3>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
-              <p className="text-sm text-muted-foreground">บทบาท: {user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}</p>
+              <Badge variant="secondary" className="mt-1">
+                {user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
+              </Badge>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
             การแก้ไขโปรไฟล์รองรับเฉพาะผู้เช่าเท่านั้น
           </p>
         </CardContent>
@@ -168,11 +178,12 @@ export function ProfileSettingsCard() {
           <span>โปรไฟล์ส่วนตัว</span>
         </CardTitle>
         <CardDescription>
-          จัดการข้อมูลส่วนตัวของคุณ
+          จัดการข้อมูลส่วนตัวของคุณ อัปเดตข้อมูลติดต่อและที่อยู่
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center space-x-4">
+      <CardContent className="space-y-6">
+        {/* Profile Header */}
+        <div className="flex items-center space-x-4 p-4 bg-muted/30 rounded-lg">
           <Avatar className="h-16 w-16">
             <AvatarImage 
               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} 
@@ -182,36 +193,54 @@ export function ProfileSettingsCard() {
               {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
             </AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-medium">{user?.name}</h3>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline">ผู้เช่า</Badge>
+              {user?.tenant?.current_room && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Home className="h-3 w-3" />
+                  <span>ห้อง {user.tenant.current_room.room_number}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        {/* Form Section */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="firstName">ชื่อ</Label>
+              <Label htmlFor="firstName" className="text-sm font-medium">
+                ชื่อ <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 id="firstName" 
                 value={formData.firstName}
                 onChange={(e) => handleInputChange('firstName', e.target.value)}
+                placeholder="กรุณาใส่ชื่อ"
                 className="mt-1"
+                required
               />
             </div>
             <div>
-              <Label htmlFor="lastName">นามสกุล</Label>
+              <Label htmlFor="lastName" className="text-sm font-medium">
+                นามสกุล <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 id="lastName" 
                 value={formData.lastName}
                 onChange={(e) => handleInputChange('lastName', e.target.value)}
+                placeholder="กรุณาใส่นามสกุล"
                 className="mt-1"
+                required
               />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="email" className="flex items-center space-x-1">
+            <Label htmlFor="email" className="flex items-center space-x-1 text-sm font-medium">
               <Mail className="h-4 w-4" />
               <span>อีเมล</span>
             </Label>
@@ -220,12 +249,13 @@ export function ProfileSettingsCard() {
               type="email" 
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
+              placeholder="example@email.com"
               className="mt-1"
             />
           </div>
 
           <div>
-            <Label htmlFor="phone" className="flex items-center space-x-1">
+            <Label htmlFor="phone" className="flex items-center space-x-1 text-sm font-medium">
               <Phone className="h-4 w-4" />
               <span>เบอร์โทรศัพท์</span>
             </Label>
@@ -233,13 +263,13 @@ export function ProfileSettingsCard() {
               id="phone" 
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
-              placeholder="กรุณาใส่เบอร์โทรศัพท์" 
+              placeholder="เช่น 086-123-4567" 
               className="mt-1"
             />
           </div>
 
           <div>
-            <Label htmlFor="address" className="flex items-center space-x-1">
+            <Label htmlFor="address" className="flex items-center space-x-1 text-sm font-medium">
               <MapPin className="h-4 w-4" />
               <span>ที่อยู่</span>
             </Label>
@@ -247,19 +277,37 @@ export function ProfileSettingsCard() {
               id="address" 
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="กรุณาใส่ที่อยู่" 
+              placeholder="ที่อยู่ปัจจุบันของคุณ" 
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="emergencyContact" className="flex items-center space-x-1 text-sm font-medium">
+              <AlertCircle className="h-4 w-4" />
+              <span>ผู้ติดต่อฉุกเฉิน</span>
+            </Label>
+            <Input 
+              id="emergencyContact" 
+              value={formData.emergencyContact}
+              onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+              placeholder="ชื่อและเบอร์โทรผู้ติดต่อฉุกเฉิน" 
               className="mt-1"
             />
           </div>
         </div>
 
-        <Button 
-          onClick={handleSaveProfile} 
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
-        </Button>
+        {/* Action Button */}
+        <div className="pt-4 border-t">
+          <Button 
+            onClick={handleSaveProfile} 
+            disabled={loading}
+            className="w-full md:w-auto"
+            size="lg"
+          >
+            {loading ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

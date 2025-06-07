@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Mail, Phone, MapPin, AlertCircle, Home, Building } from "lucide-react";
+import { User, Mail, Phone, MapPin, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -198,10 +198,9 @@ export function ProfileSettingsCard() {
             <p className="text-sm text-muted-foreground">{user?.email}</p>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline">ผู้เช่า</Badge>
-              {user?.tenant?.current_room && (
+              {user?.tenant?.room_number && (
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Home className="h-3 w-3" />
-                  <span>ห้อง {user.tenant.current_room.room_number}</span>
+                  <span>ห้อง {user.tenant.room_number}</span>
                 </div>
               )}
             </div>

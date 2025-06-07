@@ -116,11 +116,9 @@ export default function CostBreakdown({
         <span className="font-bold text-xl text-green-600">{totalAmount.toLocaleString()} บาท</span>
       </div>
       
-      {occupantCount > 1 && (
-        <div className="text-sm text-gray-600 p-2 bg-blue-50 rounded">
-          <span>หมายเหตุ: จะแบ่งบิลให้ผู้เช่าแต่ละคน {(totalAmount / occupantCount).toLocaleString()} บาท/คน</span>
-        </div>
-      )}
+      <div className="text-sm text-gray-600 p-2 bg-blue-50 rounded">
+        <span>หมายเหตุ: บิลนี้สำหรับทั้งห้อง รวม {occupantCount} คน</span>
+      </div>
     </div>
   );
 }

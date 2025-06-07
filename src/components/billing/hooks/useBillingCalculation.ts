@@ -2,20 +2,20 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useOccupancyData } from "./useOccupancyData";
+import { useRoomOccupancyData } from "./useRoomOccupancyData";
 import { useBillingFormState } from "./useBillingFormState";
 import { useBillingCalculationLogic } from "./useBillingCalculationLogic";
-import { createBillingRecord } from "../utils/billingApi";
+import { createRoomBillingRecord } from "../utils/billingApi";
 
 export const useBillingCalculation = (open: boolean, onBillingCreated: () => void, onOpenChange: (open: boolean) => void) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
-  const { occupancies } = useOccupancyData(open);
+  const { roomOccupancies } = useRoomOccupancyData(open);
   
   const {
-    selectedOccupancy,
-    setSelectedOccupancy,
+    selectedRoom,
+    setSelectedRoom,
     billingMonth,
     setBillingMonth,
     waterUnits,
@@ -32,45 +32,25 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
   } = useBillingFormState(open);
 
   const {
-    selectedOccupancyData,
+    selectedRoomData,
     roomRent,
     waterCost,
     electricityCost,
     totalAmount,
+    occupantCount,
     WATER_RATE,
     ELECTRICITY_RATE
-  } = useBillingCalculationLogic(occupancies, selectedOccupancy, waterUnits, electricityUnits);
+  } = useBillingCalculationLogic(roomOccupancies, selectedRoom, waterUnits, electricityUnits);
 
-  // Load latest meter reading when occupancy is selected
+  // Load latest meter reading when room is selected
   useEffect(() => {
-    const loadLatestMeterReading = async () => {
-      if (selectedOccupancy) {
-        try {
-          const { data, error } = await supabase
-            .from('occupancy')
-            .select('latest_meter_reading')
-            .eq('id', selectedOccupancy)
-            .single();
-
-          if (error) {
-            console.error('Error loading latest meter reading:', error);
-            return;
-          }
-
-          if (data) {
-            setPreviousMeterReading(data.latest_meter_reading || 0);
-          }
-        } catch (err) {
-          console.error('Error in loadLatestMeterReading:', err);
-        }
-      }
-    };
-
-    loadLatestMeterReading();
-  }, [selectedOccupancy, setPreviousMeterReading]);
+    if (selectedRoomData) {
+      setPreviousMeterReading(selectedRoomData.latest_meter_reading || 0);
+    }
+  }, [selectedRoomData, setPreviousMeterReading]);
 
   const handleCreateBilling = async () => {
-    if (!selectedOccupancy || !billingMonth || !dueDate) {
+    if (!selectedRoom || !billingMonth || !dueDate || !selectedRoomData) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -82,9 +62,8 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
     try {
       setLoading(true);
       
-      await createBillingRecord({
-        selectedOccupancy,
-        occupancies,
+      await createRoomBillingRecord({
+        selectedRoomData,
         billingMonth,
         roomRent,
         waterUnits,
@@ -92,27 +71,33 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
         electricityUnits,
         electricityCost,
         totalAmount,
-        dueDate
+        dueDate,
+        occupantCount
       });
 
-      // Update latest meter reading in occupancy table
-      const { error: updateError } = await supabase
-        .from('occupancy')
-        .update({ latest_meter_reading: currentMeterReading })
-        .eq('id', selectedOccupancy);
+      // Update latest meter reading for all occupants in the room
+      const updatePromises = selectedRoomData.occupants.map(occupant => 
+        supabase
+          .from('occupancy')
+          .update({ latest_meter_reading: currentMeterReading })
+          .eq('id', occupant.occupancy_id)
+      );
 
-      if (updateError) {
-        console.error('Error updating meter reading:', updateError);
+      const results = await Promise.allSettled(updatePromises);
+      const failedUpdates = results.filter(result => result.status === 'rejected');
+      
+      if (failedUpdates.length > 0) {
+        console.error('Some meter reading updates failed:', failedUpdates);
         toast({
           title: "Warning",
-          description: "Billing created but failed to update meter reading",
+          description: "Billing created but some meter readings failed to update",
           variant: "destructive",
         });
       }
 
       toast({
         title: "Billing Created",
-        description: `Billing record created successfully for ${totalAmount.toLocaleString()} THB`,
+        description: `Billing record created successfully for room ${selectedRoomData.room_number} - ${totalAmount.toLocaleString()} THB`,
       });
 
       onBillingCreated();
@@ -132,9 +117,9 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
 
   return {
     loading,
-    occupancies,
-    selectedOccupancy,
-    setSelectedOccupancy,
+    roomOccupancies,
+    selectedRoom,
+    setSelectedRoom,
     billingMonth,
     setBillingMonth,
     waterUnits,
@@ -147,11 +132,12 @@ export const useBillingCalculation = (open: boolean, onBillingCreated: () => voi
     setCurrentMeterReading,
     dueDate,
     setDueDate,
-    selectedOccupancyData,
+    selectedRoomData,
     roomRent,
     waterCost,
     electricityCost,
     totalAmount,
+    occupantCount,
     handleCreateBilling,
     WATER_RATE,
     ELECTRICITY_RATE

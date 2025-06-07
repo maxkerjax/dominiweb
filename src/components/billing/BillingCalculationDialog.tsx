@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
 import { useBillingCalculation } from "./hooks/useBillingCalculation";
-import OccupancySelector from "./components/OccupancySelector";
+import RoomSelector from "./components/RoomSelector";
 import BillingDateInputs from "./components/BillingDateInputs";
 import CostBreakdown from "./components/CostBreakdown";
 
@@ -27,26 +27,25 @@ export default function BillingCalculationDialog({
 }: BillingCalculationDialogProps) {
   const {
     loading,
-    occupancies,
-    selectedOccupancy,
-    setSelectedOccupancy,
+    roomOccupancies,
+    selectedRoom,
+    setSelectedRoom,
     billingMonth,
     setBillingMonth,
     waterUnits,
     setWaterUnits,
     electricityUnits,
-    setElectricityUnits,
     previousMeterReading,
-    setPreviousMeterReading,
     currentMeterReading,
     setCurrentMeterReading,
     dueDate,
     setDueDate,
-    selectedOccupancyData,
+    selectedRoomData,
     roomRent,
     waterCost,
     electricityCost,
     totalAmount,
+    occupantCount,
     handleCreateBilling,
     WATER_RATE,
     ELECTRICITY_RATE
@@ -58,18 +57,18 @@ export default function BillingCalculationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
-            คำนวณค่าใช้จ่าย
+            คำนวณค่าใช้จ่าย (ตามห้อง)
           </DialogTitle>
           <DialogDescription>
-            คำนวณค่าห้อง + ค่าน้ำ (หัวละ {WATER_RATE} บาท) + ค่าไฟ (หน่วยละ {ELECTRICITY_RATE} บาท) สำหรับผู้เช่า
+            คำนวณค่าห้อง + ค่าน้ำ (ตามจำนวนคน × {WATER_RATE} บาท/หัว) + ค่าไฟ (หน่วยละ {ELECTRICITY_RATE} บาท) สำหรับห้อง
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6 py-4">
-          <OccupancySelector
-            occupancies={occupancies}
-            selectedOccupancy={selectedOccupancy}
-            onOccupancyChange={setSelectedOccupancy}
+          <RoomSelector
+            roomOccupancies={roomOccupancies}
+            selectedRoom={selectedRoom}
+            onRoomChange={setSelectedRoom}
           />
 
           <BillingDateInputs
@@ -79,20 +78,19 @@ export default function BillingCalculationDialog({
             onDueDateChange={setDueDate}
           />
 
-          {selectedOccupancyData && (
+          {selectedRoomData && (
             <CostBreakdown
               roomRent={roomRent}
               waterUnits={waterUnits}
               onWaterUnitsChange={setWaterUnits}
               waterCost={waterCost}
               electricityUnits={electricityUnits}
-              onElectricityUnitsChange={setElectricityUnits}
               previousMeterReading={previousMeterReading}
-              onPreviousMeterReadingChange={setPreviousMeterReading}
               currentMeterReading={currentMeterReading}
               onCurrentMeterReadingChange={setCurrentMeterReading}
               electricityCost={electricityCost}
               totalAmount={totalAmount}
+              occupantCount={occupantCount}
               WATER_RATE={WATER_RATE}
               ELECTRICITY_RATE={ELECTRICITY_RATE}
             />
@@ -103,7 +101,7 @@ export default function BillingCalculationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             ยกเลิก
           </Button>
-          <Button onClick={handleCreateBilling} disabled={loading || !selectedOccupancy}>
+          <Button onClick={handleCreateBilling} disabled={loading || !selectedRoom}>
             {loading ? "กำลังสร้าง..." : "สร้างบิล"}
           </Button>
         </DialogFooter>

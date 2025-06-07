@@ -1,6 +1,6 @@
 
 import { Input } from "@/components/ui/input";
-import { Zap, Droplet, Home } from "lucide-react";
+import { Zap, Droplet, Home, Users } from "lucide-react";
 
 interface CostBreakdownProps {
   roomRent: number;
@@ -8,13 +8,12 @@ interface CostBreakdownProps {
   onWaterUnitsChange: (value: number) => void;
   waterCost: number;
   electricityUnits: number;
-  onElectricityUnitsChange: (value: number) => void;
   previousMeterReading: number;
-  onPreviousMeterReadingChange: (value: number) => void;
   currentMeterReading: number;
   onCurrentMeterReadingChange: (value: number) => void;
   electricityCost: number;
   totalAmount: number;
+  occupantCount: number;
   WATER_RATE: number;
   ELECTRICITY_RATE: number;
 }
@@ -30,6 +29,7 @@ export default function CostBreakdown({
   onCurrentMeterReadingChange,
   electricityCost,
   totalAmount,
+  occupantCount,
   WATER_RATE,
   ELECTRICITY_RATE
 }: CostBreakdownProps) {
@@ -37,6 +37,15 @@ export default function CostBreakdown({
     <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
       <h4 className="font-semibold text-lg">รายละเอียดค่าใช้จ่าย</h4>
       
+      {/* Occupant Count */}
+      <div className="flex items-center justify-between p-3 bg-white rounded border">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-green-600" />
+          <span>จำนวนผู้เช่าในห้อง</span>
+        </div>
+        <span className="font-medium">{occupantCount} คน</span>
+      </div>
+
       {/* Room Rent */}
       <div className="flex items-center justify-between p-3 bg-white rounded border">
         <div className="flex items-center gap-2">
@@ -51,7 +60,7 @@ export default function CostBreakdown({
         <div className="flex items-center justify-between p-3 bg-white rounded border">
           <div className="flex items-center gap-2">
             <Droplet className="h-4 w-4 text-blue-600" />
-            <span>ค่าน้ำ (หัวละ {WATER_RATE} บาท)</span>
+            <span>ค่าน้ำ ({occupantCount} คน × {WATER_RATE} บาท/หัว)</span>
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -106,6 +115,12 @@ export default function CostBreakdown({
         <span className="font-semibold text-lg">รวมทั้งหมด</span>
         <span className="font-bold text-xl text-green-600">{totalAmount.toLocaleString()} บาท</span>
       </div>
+      
+      {occupantCount > 1 && (
+        <div className="text-sm text-gray-600 p-2 bg-blue-50 rounded">
+          <span>หมายเหตุ: จะแบ่งบิลให้ผู้เช่าแต่ละคน {(totalAmount / occupantCount).toLocaleString()} บาท/คน</span>
+        </div>
+      )}
     </div>
   );
 }

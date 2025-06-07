@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 
 export const useBillingFormState = (open: boolean) => {
-  const [selectedOccupancy, setSelectedOccupancy] = useState<string>("");
+  const [selectedRoom, setSelectedRoom] = useState<string>("");
   const [billingMonth, setBillingMonth] = useState("");
   const [waterUnits, setWaterUnits] = useState<number>(1);
   const [electricityUnits, setElectricityUnits] = useState<number>(0);
@@ -30,7 +30,7 @@ export const useBillingFormState = (open: boolean) => {
   }, [currentMeterReading, previousMeterReading]);
 
   const resetForm = () => {
-    setSelectedOccupancy("");
+    setSelectedRoom("");
     setWaterUnits(1);
     setElectricityUnits(0);
     setPreviousMeterReading(0);
@@ -40,8 +40,8 @@ export const useBillingFormState = (open: boolean) => {
   };
 
   return {
-    selectedOccupancy,
-    setSelectedOccupancy,
+    selectedRoom,
+    setSelectedRoom,
     billingMonth,
     setBillingMonth,
     waterUnits,

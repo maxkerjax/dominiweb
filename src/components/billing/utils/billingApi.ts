@@ -40,13 +40,17 @@ export const createRoomBillingRecord = async (params: CreateRoomBillingParams) =
   // Create one billing record for the room (using the first occupant as representative)
   const primaryOccupant = selectedRoomData.occupants[0];
   
+  // Convert billingMonth from YYYY-MM-DD format to proper date string for database
+  // If billingMonth is in YYYY-MM format, convert to YYYY-MM-01
+  const billingDate = billingMonth.length === 7 ? billingMonth + '-01' : billingMonth;
+  
   const { error } = await supabase
     .from('billing')
     .insert({
       room_id: selectedRoomData.room_id,
       tenant_id: primaryOccupant.tenant_id,
       occupancy_id: primaryOccupant.occupancy_id,
-      billing_month: billingMonth,
+      billing_month: billingDate,
       room_rent: roomRent,
       water_units: waterUnits,
       water_cost: waterCost,

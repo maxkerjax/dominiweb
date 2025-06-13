@@ -24,12 +24,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
+import { useMutation } from "@tanstack/react-query";
 
 const userSchema = z.object({
   email: z.string().email("กรุณาใส่อีเมลที่ถูกต้อง"),
   password: z.string().min(6, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"),
   firstName: z.string().min(1, "กรุณาใส่ชื่อ"),
   lastName: z.string().min(1, "กรุณาใส่นามสกุล"),
+  address: z.string().min(1, "กรุณาใส่ที่อยู่"),
   phone: z.string().optional(),
   role: z.enum(["admin", "staff", "tenant"], {
     required_error: "กรุณาเลือกบทบาท",
@@ -55,74 +57,103 @@ export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDi
       email: "",
       password: "",
       firstName: "",
-      lastName: "",
+      lastName: "",  
+      address: "",
       phone: "",
       role: "tenant",
     },
   });
 
   const onSubmit = async (data: UserFormData) => {
-    if (!session?.access_token) {
-      toast.error("ไม่พบ session การเข้าสู่ระบบ");
+  if (!session?.access_token) {
+    toast.error("ไม่พบ session การเข้าสู่ระบบ");
+    return;
+  }
+
+  if (user?.role !== 'admin') {
+    toast.error("คุณไม่มีสิทธิ์ในการสร้างบัญชีผู้ใช้ใหม่");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // ➤ 1. สร้างบัญชีผู้ใช้ผ่าน Edge Function
+    const { data: result, error } = await supabase.functions.invoke('create-user', {
+      body: {
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        role: data.role,
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (error || result?.error) {
+      const errorMessage = result?.error || error?.message || 'ไม่สามารถสร้างบัญชีผู้ใช้ได้';
+      toast.error(errorMessage);
       return;
     }
 
-    if (user?.role !== 'admin') {
-      toast.error("คุณไม่มีสิทธิ์ในการสร้างบัญชีผู้ใช้ใหม่");
+    // สมมติว่า result.user.id คือ user id (UUID) ที่ได้จาก Edge Function
+    const userId = result?.user?.id;
+    console.log('userId', userId);
+    if (!userId) {
+      toast.error("ไม่สามารถดึง user id ได้");
       return;
     }
 
-    setLoading(true);
-    try {
-      console.log('Calling create-user function with data:', { 
-        email: data.email, 
-        role: data.role 
-      });
+    // ➤ 2. เพิ่มข้อมูลลงในตาราง tenants
+     const { data: tenantData, error: tenantError } = await supabase
+      .from('tenants')
+      .insert({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        emergency_contact: '',
+        room_number: 'NULL' 
+      })
+      .select('id')
+      .single();
 
-      const { data: result, error } = await supabase.functions.invoke('create-user', {
-        body: {
-          email: data.email,
-          password: data.password,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          role: data.role,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+    console.log('tenantData', tenantData);
+    if (tenantError) {
+      console.error('Insert tenant failed:', tenantError);
+      toast.error("สร้างบัญชีสำเร็จ แต่ไม่สามารถเพิ่มผู้เช่าได้");
+    } else {
 
-      if (error) {
-        console.error('Edge function error:', error);
-        
-        // Handle specific error cases
-        if (error.message.includes('Edge Function returned a non-2xx status code')) {
-          toast.error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ กรุณาตรวจสอบสิทธิ์การเข้าถึง");
-        } else {
-          toast.error(error.message || 'ไม่สามารถสร้างบัญชีผู้ใช้ได้');
-        }
-        return;
+      // ➤ 3. เพิ่มข้อมูลลงในตาราง profiles พร้อม tenant_id
+      const { data: profilesData, error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: userId,
+            tenant_id: tenantData.id,
+          });
+      console.log('profilesData', data);
+      if (profileError) {
+        console.error('Insert profile failed:', profileError);
+        toast.error("สร้างบัญชีสำเร็จ แต่ไม่สามารถเพิ่มข้อมูลโปรไฟล์ได้");
+      } else {
+        toast.success("สร้างบัญชีผู้ใช้และเพิ่มผู้เช่าสำเร็จ!");
       }
-
-      if (result?.error) {
-        console.error('Create user error:', result.error);
-        toast.error(result.error);
-        return;
-      }
-
-      console.log('User created successfully:', result);
-      toast.success("สร้างบัญชีผู้ใช้สำเร็จ!");
-      form.reset();
-      onOpenChange(false);
-      onSuccess?.();
-    } catch (error: any) {
-      console.error("Create user failed:", error);
-      toast.error(error.message || "ไม่สามารถสร้างบัญชีผู้ใช้ได้");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    form.reset();
+    onOpenChange(false);
+    onSuccess?.();
+  } catch (error: any) {
+    console.error("ไม่สามารถสร้างบัญชีผู้ใช้ได้", error);
+    toast.error(error.message || "ไม่สามารถสร้างบัญชีผู้ใช้ได้");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,6 +201,20 @@ export const UserCreateDialog = ({ open, onOpenChange, onSuccess }: UserCreateDi
                   <FormLabel>อีเมล</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="อีเมลของผู้ใช้" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+              <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ที่อยู่</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ที่อยู่" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

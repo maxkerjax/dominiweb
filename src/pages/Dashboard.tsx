@@ -24,14 +24,12 @@ export default function Dashboard() {
   };
 
   // Sample monthly data for the chart
-  const monthlyData = [
-    { month: "Jan", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.8 : 140000 },
-    { month: "Feb", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.9 : 150000 },
-    { month: "Mar", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.95 : 160000 },
-    { month: "Apr", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 0.98 : 165000 },
-    { month: "May", revenue: systemStats?.monthlyRevenue ? systemStats.monthlyRevenue * 1.02 : 170000 },
-    { month: "Jun", revenue: systemStats?.monthlyRevenue || 175000 },
-  ];
+ const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+const apiData = systemStats?.monthlyRevenueByMonthArray || [];
+const monthlyData = months.map(month => {
+  const found = apiData.find(item => item.month === month);
+  return { month, revenue: found ? found.revenue : 0 };
+});
 
   if (statsLoading) {
     return (

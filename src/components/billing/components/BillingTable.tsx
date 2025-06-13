@@ -16,10 +16,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import BillingStatusBadge from "@/components/billing/BillingStatusBadge";
+import { useAuth } from "@/providers/AuthProvider";
 
 interface BillingRecord {
   id: string;
   billing_month: string;
+  tenant_id: string;
   room_rent: number;
   water_units: number;
   water_cost: number;
@@ -71,12 +73,21 @@ export default function BillingTable({
     });
   };
 
+  const { user } = useAuth();
+
+  console.log('user', user);
+ const visibleBillings = filteredBillings.filter((billing) => {
+  if (user?.role === 'admin' || user?.role === 'staff') return true;
+  if (user?.role === 'tenant') return billing.tenant_id === user.tenant?.id;
+  return false;
+});
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>รายการบิล</CardTitle>
         <CardDescription>
-          แสดง {filteredBillings.length} จาก {billings.length} รายการ
+          แสดง {visibleBillings.length} จาก {visibleBillings.length} รายการ
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -96,9 +107,17 @@ export default function BillingTable({
                 <TableHead className="text-right">การดำเนินการ</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {filteredBillings.length > 0 ? (
-                filteredBillings.map((billing) => (
+         <TableBody>
+             {filteredBillings
+                .filter((billing) => {
+                  if (user?.role === 'admin' || user?.role === 'staff') return true;
+                  if (user?.role === 'tenant') {
+                    console.log('compare:', billing.tenant_id, user.profile?.tenant_id);
+                    return billing.tenant_id === user.profile?.tenant_id;
+                  }
+                  return false;
+                })
+                .map((billing) => (
                   <TableRow key={billing.id}>
                     <TableCell className="font-medium">
                       {formatMonth(billing.billing_month)}
@@ -129,17 +148,18 @@ export default function BillingTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="space-x-2">
-                        {billing.status === 'pending' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => onMarkAsPaid(billing.id)}
-                          >
-                            ชำระแล้ว
-                          </Button>
-                        )}
-                        <Button 
-                          variant="ghost" 
+                        {(user?.role === 'admin' || user?.role === 'staff') &&
+                          billing.status === 'pending' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onMarkAsPaid(billing.id)}
+                            >
+                              ชำระแล้ว
+                            </Button>
+                          )}
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => onViewDetails(billing)}
                         >
@@ -148,8 +168,14 @@ export default function BillingTable({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
+                ))}
+
+              {filteredBillings
+              .filter((billing) => {
+              if (user?.role === 'admin' || user?.role === 'staff') return true;
+              if (user?.role === 'tenant') return billing.tenant_id === user.profile?.tenant_id;
+              return false;
+              }).length === 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="text-center py-4">
                     ไม่พบข้อมูลบิลที่ตรงกับเงื่อนไขการค้นหา

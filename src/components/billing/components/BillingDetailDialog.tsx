@@ -14,6 +14,7 @@ import BillingStatusBadge from "../BillingStatusBadge";
 interface BillingRecord {
   id: string;
   billing_month: string;
+  tenant_id: string;
   room_rent: number;
   water_units: number;
   water_cost: number;
@@ -67,7 +68,7 @@ export default function BillingDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             รายละเอียดบิล - {formatMonth(billing.billing_month)}

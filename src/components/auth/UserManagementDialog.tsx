@@ -33,7 +33,7 @@ export const UserManagementDialog = ({ children }: UserManagementDialogProps) =>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <Button
+            {/* <Button
               onClick={() => {
                 setIsOpen(false);
                 setCreateUserOpen(true);
@@ -43,7 +43,7 @@ export const UserManagementDialog = ({ children }: UserManagementDialogProps) =>
             >
               <UserPlus className="mr-2 h-4 w-4" />
               สร้างบัญชีผู้ใช้ใหม่
-            </Button>
+            </Button> */}
             
             <Button
               onClick={() => {

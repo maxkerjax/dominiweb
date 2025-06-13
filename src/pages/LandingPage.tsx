@@ -1,40 +1,78 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/providers/LanguageProvider";
-import { Building, CheckCircle2, MapPin, Lock, WifiIcon } from "lucide-react";
+import { Building, CheckCircle2, MapPin, Lock, WifiIcon, BellRing, CalendarDays } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { supabase } from "@/integrations/supabase/client";
+import { format, parseISO } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+
+type Announcement = {
+  id: string;
+  title: string;
+  content: string;
+  publish_date: string;
+  important: boolean;
+};
 
 export default function LandingPage() {
-  const { t } = useLanguage();
-  const [roomTypes] = useState([
+  const { t, language } = useLanguage();
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [modalImage, setModalImage] = useState<string | null>(null);
+  const [imageIndexes, setImageIndexes] = useState([0, 0, 0]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  const roomTypes = [
     {
       id: 1,
-      name: "Standard Room",
-      nameTh: "ห้องมาตรฐาน",
-      price: "3,500",
-      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80",
-      available: true,
+      images: [
+        "https://i.ibb.co/gMBBxJp5/4.jpg",
+      ],
     },
     {
       id: 2,
-      name: "Deluxe Room",
-      nameTh: "ห้องดีลักซ์",
-      price: "4,500",
-      image: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80",
-      available: true,
+      images: [
+        "https://i.ibb.co/nqLg8FsD/1.jpg",
+      ],
     },
     {
       id: 3,
-      name: "Suite Room",
-      nameTh: "ห้องสวีท",
-      price: "5,500",
-      image: "https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2339&q=80",
-      available: false,
+      images: [
+        "https://i.ibb.co/HRsDfk0/5.jpg",
+      ],
     },
-  ]);
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setImageIndexes((prev) =>
+        prev.map((idx, i) =>
+          (idx + 1) % roomTypes[i].images.length
+        )
+      );
+    }, 2500); // เปลี่ยนรูปทุก 2.5 วินาที
+
+    return () => clearInterval(interval);
+  }, [roomTypes]);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("publish_date", { ascending: false })
+        .limit(5); // แสดงแค่ 5 รายการล่าสุด
+
+      if (!error && data) {
+        setAnnouncements(data as Announcement[]);
+      }
+    };
+
+    fetchAnnouncements();
+  }, []);
 
   const features = [
     {
@@ -55,8 +93,8 @@ export default function LandingPage() {
       icon: Building,
       title: "Modern Facilities",
       titleTh: "สิ่งอำนวยความสะดวกทันสมัย",
-      description: "Gym, laundry, and common areas",
-      descriptionTh: "ฟิตเนส, ซักรีด และพื้นที่ส่วนกลาง",
+      description: "laundry, and common areas",
+      descriptionTh: " ซักรีด และพื้นที่ส่วนกลาง",
     },
     {
       icon: MapPin,
@@ -66,8 +104,6 @@ export default function LandingPage() {
       descriptionTh: "ใกล้มหาวิทยาลัยและห้างสรรพสินค้า",
     },
   ];
-
-  const { language } = useLanguage();
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,39 +132,36 @@ export default function LandingPage() {
       {/* Hero Section */}
       <div className="relative">
         <div className="absolute inset-0 bg-primary/10 z-0"></div>
-        <div className="relative max-w-7xl mx-auto px-4 py-24 sm:px-6 lg:px-8 z-10">
+        <div className="relative max-w-7xl mx-auto px-4 py-16 sm:py-24 sm:px-6 lg:px-8 z-10">
           <div className="text-center">
-            <h2 className="text-4xl font-extrabold text-foreground sm:text-5xl">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground">
               {t("welcome.title")}
             </h2>
-            <p className="mt-4 text-xl text-muted-foreground">
+            <p className="mt-4 text-lg sm:text-xl text-muted-foreground">
               {t("welcome.subtitle")}
             </p>
-            <div className="mt-8 flex justify-center space-x-4">
+            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
               <Link to="/login">
-                <Button size="lg">{t("welcome.login")}</Button>
+                <Button size="lg" className="w-full sm:w-auto">{t("welcome.login")}</Button>
               </Link>
-              <Button size="lg" variant="outline">
-                {t("welcome.explore")}
-              </Button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Features */}
-      <div className="py-16 bg-background">
+      <div className="py-8 sm:py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-foreground">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {t("welcome.features")}
             </h2>
           </div>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="p-6 bg-card rounded-lg shadow-sm border border-border"
+                className="p-6 bg-card rounded-lg shadow-sm border border-border flex flex-col items-center text-center"
               >
                 <div className="inline-flex items-center justify-center rounded-md p-2 bg-primary/10 text-primary mb-4">
                   <feature.icon className="h-6 w-6" />
@@ -148,45 +181,25 @@ export default function LandingPage() {
       </div>
 
       {/* Available Rooms */}
-      <div className="py-16 bg-muted/50">
+      <div className="py-8 sm:py-16 bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-foreground">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {t("welcome.explore")}
             </h2>
           </div>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {roomTypes.map((room) => (
               <div
                 key={room.id}
-                className="bg-card rounded-lg overflow-hidden shadow-md border border-border"
+                className="bg-card rounded-lg overflow-hidden shadow-md border border-border flex flex-col"
               >
-                <div className="h-48 overflow-hidden">
+                <div className="w-full h-[400px] overflow-hidden cursor-pointer" onClick={() => setModalImage(room.images[0])}>
                   <img
-                    src={room.image}
-                    alt={language === "en" ? room.name : room.nameTh}
-                    className="w-full h-full object-cover"
+                    src={room.images[0]}
+                    alt={`Room ${room.id}`}
+                    className="w-full h-full object-cover transition-all duration-700"
                   />
-                </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">
-                      {language === "en" ? room.name : room.nameTh}
-                    </h3>
-                    <p className="font-bold text-primary">{room.price} THB</p>
-                  </div>
-                  <div className="mt-4 flex items-center">
-                    <CheckCircle2
-                      className={`h-5 w-5 mr-2 ${
-                        room.available
-                          ? "text-emerald-500"
-                          : "text-destructive"
-                      }`}
-                    />
-                    <p className="text-sm">
-                      {room.available ? "Available" : "Not Available"}
-                    </p>
-                  </div>
                 </div>
               </div>
             ))}
@@ -194,36 +207,135 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* Modal รูปภาพ */}
+      {modalImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70"
+          onClick={() => setModalImage(null)}
+        >
+          <img
+            src={modalImage}
+            alt="Room Large"
+            className="w-full max-w-[90vw] max-h-[80vh] sm:max-w-[600px] md:max-w-[800px] h-auto rounded-lg shadow-lg border-4 border-white"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* Calendar Section */}
+      <div className="py-8 sm:py-16 bg-gradient-to-b from-background to-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground 
+              bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70
+              animate-fade-in">
+              {t("calendar.title")}
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              {t("calendar.subtitle")}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Calendar */}
+            <div className="bg-card rounded-xl shadow-lg border border-border/50 p-4 sm:p-6
+              transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="w-full"
+                classNames={{
+                  day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 transform scale-110 transition-transform",
+                  day_today: "bg-accent text-accent-foreground font-bold ring-2 ring-primary ring-offset-2",
+                  cell: "text-center p-0 relative [&:has([aria-selected])]:bg-primary/10 rounded-md transition-colors",
+                  day: "h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 p-0 font-normal hover:bg-muted rounded-md transition-all hover:scale-105 active:scale-95",
+                  head_cell: "text-muted-foreground rounded-md w-12 sm:w-14 md:w-16 lg:w-20 font-semibold text-sm sm:text-base uppercase",
+                  nav_button: "h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 bg-muted/50 hover:bg-primary/10 rounded-full transition-colors",
+                  table: "w-full border-collapse space-y-4"
+                }}
+              />
+            </div>
+            
+            {/* Announcements Section */}
+            <div className="bg-card rounded-xl shadow-lg border border-border/50 p-4 sm:p-6
+              transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
+              <div className="flex items-center gap-2 mb-6">
+                <BellRing className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-bold text-foreground">
+                  {t("announcements.title")}
+                </h3>
+              </div>
+              <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar">
+                {announcements.length > 0 ? (
+                  announcements.map((announcement) => (
+                    <div 
+                      key={announcement.id}
+                      className="p-4 bg-muted/50 rounded-lg border border-border/50
+                        hover:bg-muted/70 transition-colors group"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                            {announcement.title}
+                          </h4>
+                          {announcement.important && (
+                            <Badge variant="destructive" className="ml-2">
+                              {t("announcements.important")}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CalendarDays className="h-4 w-4" />
+                          <span>{format(parseISO(announcement.publish_date), "d MMMM yyyy")}</span>
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground mt-2">
+                        {announcement.content}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <BellRing className="mx-auto h-12 w-12 mb-3 text-muted-foreground" />
+                    <p>{t("announcements.noAvailable")}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
       <footer className="bg-background text-foreground border-t border-border py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div>
               <h3 className="text-lg font-bold mb-4">{t("app.title")}</h3>
-              <p className="text-muted-foreground">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer
-                nec odio.
-              </p>
+              <div className="w-full">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d123948.80735360993!2d99.8125109!3d13.8750008!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30e2e592573eac1f%3A0xc0b0318b7fb3fd64!2z4Lia4LmJ4Liy4LiZ4Lie4Li44LiX4LiY4LiK4Liy4LiV4Li0IOC4meC4hOC4o-C4m-C4kOC4oQ!5e0!3m2!1sth!2sth!4v1748183614363!5m2!1sth!2sth"
+                  className="w-full"
+                  height="150"
+                  style={{ border: "2px solid #dfdfdf", borderRadius: "18px" }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                
+              </div>
             </div>
             <div>
-              <h3 className="text-lg font-bold mb-4">
-                {t("welcome.contact")}
-              </h3>
-              <p className="text-muted-foreground">123 Main St, City</p>
-              <p className="text-muted-foreground">Phone: 123-456-7890</p>
-              <p className="text-muted-foreground">Email: info@dormitory.com</p>
             </div>
             <div>
-              <h3 className="text-lg font-bold mb-4">Follow Us</h3>
+              <h3 className="text-lg font-bold mb-4">Contact Us</h3>
               <div className="flex space-x-4">
-                <a href="#" className="text-foreground hover:text-primary">
-                  Facebook
-                </a>
-                <a href="#" className="text-foreground hover:text-primary">
-                  Twitter
-                </a>
-                <a href="#" className="text-foreground hover:text-primary">
-                  Instagram
+                <a href="https://maps.app.goo.gl/SUTe631uLxX4DD3QA" target="_blank" rel="noopener noreferrer" className="text-foreground hover:text-primary">
+                  <p className="text-muted-foreground">100 หนองปากโลง</p>
+                  <p className="text-muted-foreground">อำเภอเมืองนครปฐม นครปฐม 73000</p>
+                  <p className="text-muted-foreground">Phone: 06-5329-9452</p>
+                  <p className="text-muted-foreground">Line : IDLine</p>
+                  <p className="text-muted-foreground"><a href="https://www.facebook.com/poll.ponlop.5/">Facebook : Poll Ponlop</a></p>
                 </a>
               </div>
             </div>

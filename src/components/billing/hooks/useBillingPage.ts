@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface BillingRecord {
   id: string;
   billing_month: string;
+  tenant_id: string;
   room_rent: number;
   water_units: number;
   water_cost: number;
@@ -45,6 +46,7 @@ export const useBillingPage = () => {
         .select(`
           id,
           billing_month,
+          tenant_id,
           room_rent,
           water_units,
           water_cost,

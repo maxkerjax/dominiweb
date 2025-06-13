@@ -4,6 +4,7 @@ import { useState } from "react";
 interface BillingRecord {
   id: string;
   billing_month: string;
+  tenant_id: string;
   room_rent: number;
   water_units: number;
   water_cost: number;

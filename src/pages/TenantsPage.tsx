@@ -32,17 +32,30 @@ import TenantFormDialog from "@/components/tenants/TenantFormDialog";
 import TenantDetailsDialog from "@/components/tenants/TenantDetailsDialog";
 import RoomAssignmentDialog from "@/components/tenants/RoomAssignmentDialog";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { UserCreateDialog } from "../components/auth/UserCreateDialog";
+import { PasswordResetDialog } from "../components/auth/PasswordResetDialog";
 
 type Tenant = Database['public']['Tables']['tenants']['Row'] & {
   current_room?: {
-    id: string;
-    room_number: string;
-    room_type: string;
-    floor: number;
+  id: string;
+  room_number: string;
+  room_type: string;
+  floor: number;
   } | null;
 };
 
-const TenantsPage = () => {
+interface UserManagementDialogProps {
+  children: React.ReactNode;
+}
+
+const TenantsPage = ({ children }: UserManagementDialogProps) => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -50,6 +63,9 @@ const TenantsPage = () => {
   const [isRoomAssignOpen, setIsRoomAssignOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+
 
   const {
     tenants,
@@ -125,6 +141,25 @@ const TenantsPage = () => {
   }
 
   return (
+    <>
+     <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>จัดการผู้ใช้ระบบ</DialogTitle>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Create Dialog */}
+      <UserCreateDialog
+        open={createUserOpen}
+        onOpenChange={setCreateUserOpen}
+        onSuccess={() => {
+          // Refresh data if needed
+        }}
+      />
+      
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
@@ -132,7 +167,11 @@ const TenantsPage = () => {
           <p className="text-muted-foreground">จัดการข้อมูลผู้เช่าและห้องที่เช่าในอพาร์ตเมนต์</p>
         </div>
         <div className="mt-4 md:mt-0">
-          <Button onClick={handleAddTenant} className="flex items-center gap-2">
+          <Button  onClick={() => {
+                setIsOpen(false);
+                setCreateUserOpen(true);
+              }}
+               className="flex items-center gap-2">
             <Plus size={16} />
             เพิ่มผู้เช่าใหม่
           </Button>
@@ -295,6 +334,7 @@ const TenantsPage = () => {
         isLoading={isAssigningRoom}
       />
     </div>
+    </>
   );
 };
 

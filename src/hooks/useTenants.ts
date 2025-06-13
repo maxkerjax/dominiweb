@@ -6,15 +6,27 @@ import { useAuth } from "@/providers/AuthProvider";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tenant = Database['public']['Tables']['tenants']['Row'] & {
-  current_room?: {
+    current_room?: {
     id: string;
     room_number: string;
     room_type: string;
     floor: number;
   } | null;
 };
-type TenantInsert = Database['public']['Tables']['tenants']['Insert'];
+type TenantInsert = Database['public']['Tables']['tenants']['Insert']& {
+   id?: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  created_at?: string;
+};
 type TenantUpdate = Database['public']['Tables']['tenants']['Update'];
+
+type RoomUpdate = Database['public']['Tables']['rooms']['Update']& {
+   tenant_id?: string;
+};
 
 export const useTenants = () => {
   const { toast } = useToast();
@@ -82,21 +94,30 @@ export const useTenants = () => {
   });
 
   const createTenantMutation = useMutation({
-    mutationFn: async (newTenant: TenantInsert) => {
-      console.log('Creating tenant:', newTenant);
-      const { data, error } = await supabase
-        .from('tenants')
-        .insert(newTenant)
-        .select()
-        .single();
+      mutationFn: async (newTenant: TenantInsert) => {
+        console.log('Creating tenant with:', newTenant);
 
-      if (error) {
-        console.error('Error creating tenant:', error);
-        throw error;
-      }
+        const { data, error } = await supabase
+          .from('tenants')
+          .insert({
+            first_name: newTenant.first_name,
+            last_name: newTenant.last_name,
+            email: newTenant.email,
+            phone: newTenant.phone,
+            address: newTenant.address,
+            emergency_contact: newTenant.emergency_contact || '',
+            room_number: newTenant.room_number || 'NULL' 
+          })
+          .select()
+          .single();
 
-      return data;
-    },
+        if (error) {
+          console.error('Error creating tenant:', error);
+          throw error;
+        }
+
+        return data;
+      },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       toast({
@@ -150,7 +171,7 @@ export const useTenants = () => {
 
   const deleteTenantMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deleting tenant:', id);
+      // console.log('Deleting tenant:', id);
       const { error } = await supabase
         .from('tenants')
         .delete()
@@ -178,76 +199,119 @@ export const useTenants = () => {
     },
   });
 
-  const assignRoomMutation = useMutation({
-    mutationFn: async ({ tenantId, roomId }: { tenantId: string; roomId: string }) => {
-      console.log('Assigning room:', { tenantId, roomId });
-      
-      // First, check the room capacity and current occupancy
-      const { data: roomData, error: roomError } = await supabase
-        .from('rooms')
-        .select('capacity')
-        .eq('id', roomId)
-        .single();
+ const assignRoomMutation = useMutation({
+  mutationFn: async ({ tenantId, roomId }: { tenantId: string; roomId: string }) => {
+    console.log('Assigning room:', { tenantId, roomId });
+    
+    // 1. ดึงข้อมูลห้อง
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('capacity, room_number')
+      .eq('id', roomId)
+      .single();
 
-      if (roomError) {
-        console.error('Error fetching room:', roomError);
-        throw roomError;
-      }
+    if (roomError) {
+      console.error('Error fetching room:', roomError);
+      throw roomError;
+    }
 
-      const { data: currentOccupancy, error: occupancyError } = await supabase
-        .from('occupancy')
-        .select('tenant_id')
-        .eq('room_id', roomId)
-        .eq('is_current', true);
+    // 2. ดึงข้อมูลผู้เช่าที่อยู่ในห้องนี้แล้ว
+    const { data: currentOccupancy, error: occupancyError } = await supabase
+      .from('occupancy')
+      .select('tenant_id')
+      .eq('room_id', roomId)
+      .eq('is_current', true);
 
-      if (occupancyError) {
-        console.error('Error fetching current occupancy:', occupancyError);
-        throw occupancyError;
-      }
+    if (occupancyError) {
+      console.error('Error fetching current occupancy:', occupancyError);
+      throw occupancyError;
+    }
 
-      // Check if room has space
-      const currentOccupants = currentOccupancy?.length || 0;
-      if (currentOccupants >= roomData.capacity) {
-        throw new Error('ห้องนี้เต็มแล้ว ไม่สามารถเพิ่มผู้เช่าได้');
-      }
+    const currentOccupants = currentOccupancy?.length || 0;
+    if (currentOccupants >= roomData.capacity) {
+      throw new Error('ห้องนี้เต็มแล้ว ไม่สามารถเพิ่มผู้เช่าได้');
+    }
 
-      // Check out from any current room first
+    // 3. เช็คเอาต์ออกจากห้องปัจจุบัน (ถ้ามี)
+    await supabase
+      .from('occupancy')
+      .update({ 
+        is_current: false, 
+        check_out_date: new Date().toISOString().split('T')[0] 
+      })
+      .eq('tenant_id', tenantId)
+      .eq('is_current', true);
+
+    // 4. เช็คอินห้องใหม่
+    const { data, error } = await supabase
+      .from('occupancy')
+      .insert({
+        tenant_id: tenantId,
+        room_id: roomId,
+        check_in_date: new Date().toISOString().split('T')[0],
+        is_current: true
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error assigning room:', error);
+      throw error;
+    }
+
+  // 5. อัปเดตข้อมูล tenant ในตาราง tenants
+  const { error: updateTenantError } = await supabase
+    .from('tenants')
+    .update({ room_number: roomData.room_number }) 
+    .eq('id', tenantId);
+
+  if (updateTenantError) {
+    console.error('Error updating tenant with room info:', updateTenantError);
+    throw updateTenantError;
+  }
+
+  // 6. อัปเดต tenant_id ในตาราง rooms (ห้องใหม่)
+  const { error: updateRoomTenantError } = await supabase
+    .from('rooms')
+    .update <RoomUpdate>({ tenant_id: tenantId })
+    .eq('id', roomId);
+
+  if (updateRoomTenantError) {
+    console.error('Error updating room with tenant_id:', updateRoomTenantError);
+    throw updateRoomTenantError;
+  }
+
+  // 6.1 อัปเดต tenant_id ของห้องเก่าให้เป็น NULL
+  // หา occupancy ล่าสุดที่ tenant เคยอยู่ (แต่ไม่ใช่ห้องใหม่)
+  // 6.1 อัปเดต tenant_id ของห้องเก่าให้เป็น NULL ทั้งหมด (ยกเว้นห้องใหม่)
+const { data: oldOccupancies } = await supabase
+  .from('occupancy')
+  .select('room_id')
+  .eq('tenant_id', tenantId)
+  .eq('is_current', false);
+
+if (oldOccupancies && Array.isArray(oldOccupancies)) {
+  // ลบ tenant_id ออกจากทุกห้องเก่าที่ไม่ใช่ห้องใหม่
+  for (const occ of oldOccupancies) {
+    if (occ.room_id && occ.room_id !== roomId) {
       await supabase
-        .from('occupancy')
-        .update({ 
-          is_current: false, 
-          check_out_date: new Date().toISOString().split('T')[0] 
-        })
-        .eq('tenant_id', tenantId)
-        .eq('is_current', true);
+        .from('rooms')
+        .update<RoomUpdate>({ tenant_id: null })
+        .eq('id', occ.room_id);
+    }
+  }
+}
 
-      // Then create new occupancy record
-      const { data, error } = await supabase
-        .from('occupancy')
-        .insert({
-          tenant_id: tenantId,
-          room_id: roomId,
-          check_in_date: new Date().toISOString().split('T')[0],
-          is_current: true
-        })
-        .select()
-        .single();
+  // 7. อัปเดตสถานะห้อง (ถ้าจำเป็น)
+  if (currentOccupants === 0) {
+    await supabase
+      .from('rooms')
+      .update({ status: 'occupied' })
+      .eq('id', roomId);
+  }
 
-      if (error) {
-        console.error('Error assigning room:', error);
-        throw error;
-      }
-
-      // Update room status to occupied if it becomes occupied
-      if (currentOccupants === 0) {
-        await supabase
-          .from('rooms')
-          .update({ status: 'occupied' })
-          .eq('id', roomId);
-      }
-
-      return data;
-    },
+  return data;
+  },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['available-rooms-with-capacity'] });

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useState } from "react";
+import { useReportsData } from "@/components/reports/hooks/useReportsData";
 
 export interface DashboardStats {
   totalRooms: number;
@@ -16,58 +16,55 @@ type MonthlyData = {
 };
 
 export function useDashboardData() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRooms: 50,
+    occupiedRooms: 42,
+    vacantRooms: 8,
+    pendingRepairs: 3,
+    monthlyRevenue: 175000,
+    announcements: 2,
+  });
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
+  const { revenueData, isLoading } = useReportsData("revenue");
 
-      const response = await axios.get("https://stripeapi-76to.onrender.com/server/dashboard");
+  const fallbackData = [
+    { month: "Jan", revenue: 10000 },
+    { month: "Feb", revenue: 12000 },
+    { month: "Mar", revenue: 9000 },
+    { month: "Apr", revenue: 15000 },
+    { month: "May", revenue: 11000 },
+    { month: "Jun", revenue: 13000 },
+  ];
 
-      const {
-        totalRooms,
-        occupiedRooms,
-        vacantRooms,
-        pendingRepairs,
-        announcements,
-        monthlyRevenue,
-        revenue = [],
-      } = response.data;
+  // เอา 6 เดือนล่าสุด
+  const last6Revenue = revenueData.length > 0 ? revenueData.slice(-6) : fallbackData;
 
-      setStats({
-        totalRooms,
-        occupiedRooms,
-        vacantRooms,
-        pendingRepairs,
-        announcements,
-        monthlyRevenue,
-      });
-
-      setMonthlyData(revenue);
-    } catch (err: any) {
-      setError("โหลดข้อมูลล้มเหลว");
-      console.error("Dashboard API error:", err);
-    } finally {
-      setLoading(false);
-    }
+  const chartData = {
+    labels: last6Revenue.map((item) => item.month),
+    datasets: [
+      {
+        label: "รายได้ (บาท)",
+        data: last6Revenue.map((item) => item.revenue),
+        backgroundColor: "#3b82f6",
+      },
+    ],
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  // ดึง 6 เดือนล่าสุด
+  const last6Occupancy = revenueData.slice(-6);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("th-TH", {
-      style: "currency",
-      currency: "THB",
-      minimumFractionDigits: 0,
-    }).format(value);
+  const occupancyChartData = {
+    labels: last6Occupancy.map((item) => item.month),
+    datasets: [
+      {
+        label: "Occupancy Rate",
+        data: last6Occupancy.map(
+          (item) => (item.occupiedRooms / (item.occupiedRooms + item.vacantRooms)) * 100
+        ),
+        backgroundColor: "#60a5fa",
+      },
+    ],
   };
-
-  const last6Revenue = monthlyData.slice(-6);
 
   const revenueChartData = {
     labels: last6Revenue.map((item) => item.month),
@@ -80,12 +77,23 @@ export function useDashboardData() {
     ],
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("th-TH", {
+      style: "currency",
+      currency: "THB",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  console.log("occupancyData", occupancyData);
+  console.log("revenueData", revenueData);
+
   return {
     stats,
     monthlyData,
-    loading,
-    error,
     formatCurrency,
+    chartData,
+    occupancyChartData,
     revenueChartData,
   };
 }

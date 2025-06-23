@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/components/LoginForm.tsx
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,9 +16,8 @@ import {
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useAuth } from "@/providers/AuthProvider";
 
-// Define schema
 const loginSchema = z.object({
   email: z.string().email("กรุณาใส่อีเมลที่ถูกต้อง"),
   password: z.string().min(1, "กรุณาใส่รหัสผ่าน"),
@@ -26,6 +26,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginForm = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -37,37 +38,19 @@ export const LoginForm = () => {
     },
   });
 
-  const loginWithAPI = async (email: string, password: string) => {
-  const res = await fetch("https://stripeapi-76to.onrender.com/server/loginUser", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const result = await res.json();
-  if (!res.ok) throw new Error(result.error || "Login failed");
-
-  return result;
-};
-
-
- const onSubmit = async (data: LoginFormData) => {
-  setLoading(true);
-  try {
-    const response = await loginWithAPI(data.email, data.password);
-    toast.success("เข้าสู่ระบบสำเร็จ!");
-    // เก็บ token / session ไว้ตามที่คุณต้องการ
-    navigate("/dashboard");
-  } catch (error: any) {
-    console.error("Login failed:", error);
-    toast.error(error.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-  } finally {
-    setLoading(false);
-  }
-};
-
+  const onSubmit = async (data: LoginFormData) => {
+    setLoading(true);
+    try {
+      await login(data.email, data.password);
+      toast.success("เข้าสู่ระบบสำเร็จ!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      toast.error(error.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Form {...form}>

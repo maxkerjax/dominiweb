@@ -8,19 +8,24 @@ import { OccupancyVisualization } from "@/components/dashboard/OccupancyVisualiz
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useReportsData } from "@/components/reports/hooks/useReportsData";
+import { useReportsData } from "@/components/reports/hooks/useReportsData"; // เพิ่มบรรทัดนี้
 
 export default function Dashboard() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { data: systemStats, isLoading: statsLoading } = useSystemStats();
-  const { revenueData = [], isLoading: revenueLoading } = useReportsData("revenue") || { revenueData: [] };
 
-  console.log("systemStats:", systemStats);
-  console.log("revenueData:", revenueData);
-  console.log("user:", user);
+  // ใช้ useReportsData เพื่อดึงข้อมูลรายได้รายเดือน
+  const { revenueData, isLoading: revenueLoading } = useReportsData("revenue");
 
-  // เช็คสถานะการโหลด
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("th-TH", {
+      style: "currency",
+      currency: "THB",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
   if (statsLoading || revenueLoading) {
     return (
       <div className="animate-in fade-in duration-500">
@@ -34,28 +39,17 @@ export default function Dashboard() {
     );
   }
 
-  // กรณีข้อมูลยังไม่พร้อม (null หรือ undefined)
-  if (!systemStats || !Array.isArray(revenueData)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">ไม่พบข้อมูล</p>
-      </div>
-    );
-  }
-
-  // เตรียมข้อมูลรายได้ 6 เดือนล่าสุด
+  // เอาเฉพาะ 6 เดือนล่าสุด
   const last6Revenue = revenueData.slice(-6);
 
-  // รวมรายได้ทั้งหมด
-  const totalRevenue = revenueData.reduce((sum, r) => sum + (r.revenue || 0), 0);
+  // หาเดือนปัจจุบันและรายได้เดือนปัจจุบัน
+  const today = new Date();
+  // const currentMonthName = today.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  // const currentMonthShort = today.toLocaleDateString('en-US', { month: 'short' });
+  // const currentMonthRevenue = revenueData.find(r => r.month === currentMonthShort)?.revenue || 0;
 
-  // ฟอร์แมตราคาเป็นสกุลเงินบาท
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("th-TH", {
-      style: "currency",
-      currency: "THB",
-      minimumFractionDigits: 0,
-    }).format(value);
+  // รวมรายได้ทั้งหมดที่ผ่านมา
+  const totalRevenue = revenueData.reduce((sum, r) => sum + (r.revenue || 0), 0);
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -64,22 +58,17 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold">ยินดีต้อนรับ</h1>
           <p className="text-muted-foreground">ภาพรวมระบบจัดการหอพัก</p>
         </div>
-
-        {user && user.name && (
+        
+        {user && (
           <Card className="p-4">
             <div className="flex items-center space-x-3">
               <Avatar>
-                <AvatarImage
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
-                  alt={user.name}
+                <AvatarImage 
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} 
+                  alt={user.name} 
                 />
                 <AvatarFallback>
-                  {user.name
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
+                  {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div>
@@ -94,7 +83,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* รายได้รวม */}
+      {/* Total Revenue Card */}
       <div className="mb-6">
         <Card>
           <CardHeader>
@@ -103,38 +92,40 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">
-              {formatCurrency(totalRevenue)}
-            </div>
+            <div className="text-3xl font-bold text-primary">{formatCurrency(totalRevenue)}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* ตารางสถิติ */}
+      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <RoomStatsCard
-          totalRooms={systemStats.totalRooms || 0}
-          occupiedRooms={systemStats.occupiedRooms || 0}
-          vacantRooms={(systemStats.totalRooms || 0) - (systemStats.occupiedRooms || 0)}
+          totalRooms={systemStats?.totalRooms || 0}
+          occupiedRooms={systemStats?.occupiedRooms || 0}
+          vacantRooms={(systemStats?.totalRooms || 0) - (systemStats?.occupiedRooms || 0)}
           t={t}
         />
 
         <ServiceStatsCard
           monthlyData={last6Revenue}
-          pendingRepairs={systemStats.pendingRepairs || 0}
+          pendingRepairs={systemStats?.pendingRepairs || 0}
           announcements={2}
           formatCurrency={formatCurrency}
           t={t}
         />
       </div>
 
-      {/* กราฟ */}
+      {/* Revenue Chart */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-6">
-        <RevenueChart monthlyData={last6Revenue} formatCurrency={formatCurrency} t={t} />
+        <RevenueChart 
+          monthlyData={last6Revenue}
+          formatCurrency={formatCurrency}
+          t={t}
+        />
 
         <OccupancyVisualization
-          occupiedRooms={systemStats.occupiedRooms || 0}
-          totalRooms={systemStats.totalRooms || 0}
+          occupiedRooms={systemStats?.occupiedRooms || 0}
+          totalRooms={systemStats?.totalRooms || 0}
         />
       </div>
     </div>

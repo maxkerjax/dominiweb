@@ -38,7 +38,7 @@ export const LoginForm = () => {
   });
 
   const loginWithAPI = async (email: string, password: string) => {
-  const res = await fetch("https://stripeapi-76to.onrender.com/server/login", {
+  const res = await fetch("https://stripeapi-76to.onrender.com/server/loginUser", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

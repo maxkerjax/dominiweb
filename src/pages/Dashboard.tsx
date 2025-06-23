@@ -17,6 +17,11 @@ export default function Dashboard() {
 
   // ใช้ useReportsData เพื่อดึงข้อมูลรายได้รายเดือน
   const { revenueData, isLoading: revenueLoading } = useReportsData("revenue");
+console.log("user:", user);
+console.log("systemStats:", systemStats);
+console.log("revenueData:", revenueData);
+console.log("statsLoading:", statsLoading);
+console.log("revenueLoading:", revenueLoading);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("th-TH", {

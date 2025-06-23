@@ -54,7 +54,7 @@ const BillingPaymentDialog = ({
 
     console.log("Using API URL:", apiUrl);
 
-    const response = await fetch(`${apiUrl}/stripe/create-checkout-session`, {
+    const response = await fetch(`${apiUrl}/server/create-checkout-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount: billing.sum, billingId: billing.id, description }),

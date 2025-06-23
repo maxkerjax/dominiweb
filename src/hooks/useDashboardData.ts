@@ -24,15 +24,32 @@ export function useDashboardData() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("https://stripeapi-76to.onrender.com/sever/dashboard");
-      const { stats, revenue } = response.data;
 
-      setStats(stats);
-      setMonthlyData(revenue || []);
+      const response = await axios.get("https://stripeapi-76to.onrender.com/server/dashboard");
+
+      const {
+        totalRooms,
+        occupiedRooms,
+        vacantRooms,
+        pendingRepairs,
+        announcements,
+        monthlyRevenue,
+        revenue = [],
+      } = response.data;
+
+      setStats({
+        totalRooms,
+        occupiedRooms,
+        vacantRooms,
+        pendingRepairs,
+        announcements,
+        monthlyRevenue,
+      });
+
+      setMonthlyData(revenue);
     } catch (err: any) {
       setError("โหลดข้อมูลล้มเหลว");
       console.error("Dashboard API error:", err);
-
     } finally {
       setLoading(false);
     }

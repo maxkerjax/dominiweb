@@ -37,26 +37,37 @@ export const LoginForm = () => {
     },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
-    setLoading(true);
-    try {
-      const res = await axios.post("https://stripeapi-76to.onrender.com/server/loginUser", data); 
-      const token = res.data.token;
-      const user = res.data.user;
+  const loginWithAPI = async (email: string, password: string) => {
+  const res = await fetch("https://stripeapi-76to.onrender.com/server/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
 
-      // เก็บ token และ user ใน localStorage หรือ context แล้วแต่โครงสร้างโปรเจกต์
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Login failed");
 
-      toast.success("เข้าสู่ระบบสำเร็จ!");
-      navigate("/dashboard"); 
-    } catch (err: any) {
-      console.error("Login failed:", err);
-      toast.error(err?.response?.data?.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-    } finally {
-      setLoading(false);
-    }
-  };
+  return result;
+};
+
+
+ const onSubmit = async (data: LoginFormData) => {
+  setLoading(true);
+  try {
+    const response = await loginWithAPI(data.email, data.password);
+    toast.success("เข้าสู่ระบบสำเร็จ!");
+    // เก็บ token / session ไว้ตามที่คุณต้องการ
+    navigate("/dashboard");
+  } catch (error: any) {
+    console.error("Login failed:", error);
+    toast.error(error.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <Form {...form}>

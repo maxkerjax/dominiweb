@@ -170,7 +170,7 @@ export const useReportsData = (selectedReport: string) => {
 
           const { data: billingData, error: billingError } = await supabase
             .from('billing')
-            .select('total_amount')
+            .select('sum')
             .gte('billing_month', startOfMonth.toISOString().split('T')[0])
             .lte('billing_month', endOfMonth.toISOString().split('T')[0]);
 
@@ -179,7 +179,7 @@ export const useReportsData = (selectedReport: string) => {
             continue;
           }
 
-          const totalRevenue = billingData?.reduce((sum, bill) => sum + Number(bill.total_amount), 0) || 0;
+          const totalRevenue = billingData?.reduce((total, bill) => total + Number(bill.sum), 0) || 0;
 
           monthlyData.push({
             month: monthName,

@@ -10,7 +10,7 @@ interface BillingRecord {
   water_cost: number;
   electricity_units: number;
   electricity_cost: number;
-  total_amount: number;
+  sum: number;
   status: string;
   due_date: string;
   paid_date: string | null;

@@ -1,4 +1,3 @@
-
 import { 
   Table, 
   TableBody, 
@@ -27,11 +26,13 @@ interface BillingRecord {
   water_cost: number;
   electricity_units: number;
   electricity_cost: number;
-  total_amount: number;
+  sum: number;
   status: string;
   due_date: string;
   paid_date: string | null;
   created_at: string;
+  receipt_number: string;
+  fullname: string | null;
   rooms: {
     room_number: string;
   };
@@ -46,13 +47,15 @@ interface BillingTableProps {
   filteredBillings: BillingRecord[];
   onMarkAsPaid: (billingId: string) => void;
   onViewDetails: (billing: BillingRecord) => void;
+  onPayClick: (billing: BillingRecord) => void;
 }
 
 export default function BillingTable({ 
   billings, 
   filteredBillings, 
   onMarkAsPaid,
-  onViewDetails
+  onViewDetails,
+  onPayClick 
 }: BillingTableProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
@@ -74,6 +77,7 @@ export default function BillingTable({
   };
 
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   console.log('user', user);
  const visibleBillings = filteredBillings.filter((billing) => {
@@ -93,9 +97,9 @@ export default function BillingTable({
       <CardContent>
         <div className="rounded-md border">
           <Table>
-            <TableHeader>
-              <TableRow>
+            <TableHeader>              <TableRow>
                 <TableHead>เดือน</TableHead>
+                <TableHead>เลขที่ใบเสร็จ</TableHead>
                 <TableHead>ผู้เช่า</TableHead>
                 <TableHead>ห้อง</TableHead>
                 <TableHead>ค่าห้อง</TableHead>
@@ -104,6 +108,7 @@ export default function BillingTable({
                 <TableHead>รวม</TableHead>
                 <TableHead>ครบกำหนด</TableHead>
                 <TableHead>สถานะ</TableHead>
+                <TableHead>วันที่ชำระ</TableHead>
                 <TableHead className="text-right">การดำเนินการ</TableHead>
               </TableRow>
             </TableHeader>
@@ -118,12 +123,15 @@ export default function BillingTable({
                   return false;
                 })
                 .map((billing) => (
-                  <TableRow key={billing.id}>
-                    <TableCell className="font-medium">
+                  <TableRow key={billing.id}>                   
+                   <TableCell className="font-medium">
                       {formatMonth(billing.billing_month)}
                     </TableCell>
+                    <TableCell className="font-medium">
+                      {billing.receipt_number || '-'}
+                    </TableCell>
                     <TableCell>
-                      {billing.tenants.first_name} {billing.tenants.last_name}
+                      {billing.fullname}
                     </TableCell>
                     <TableCell>{billing.rooms.room_number}</TableCell>
                     <TableCell>{formatCurrency(billing.room_rent)}</TableCell>
@@ -140,31 +148,44 @@ export default function BillingTable({
                       </div>
                     </TableCell>
                     <TableCell className="font-bold">
-                      {formatCurrency(billing.total_amount)}
+                      {formatCurrency(billing.sum)}
                     </TableCell>
                     <TableCell>{formatDate(billing.due_date)}</TableCell>
                     <TableCell>
                       <BillingStatusBadge status={billing.status} />
                     </TableCell>
+                    <TableCell>
+                      {billing.paid_date
+                        ? formatDate(billing.paid_date)
+                        : '-'}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="space-x-2">
-                        {(user?.role === 'admin' || user?.role === 'staff') &&
-                          billing.status === 'pending' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onMarkAsPaid(billing.id)}
-                            >
-                              ชำระแล้ว
-                            </Button>
-                          )}
+                      <div className="flex justify-end gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => onViewDetails(billing)}
                         >
                           ดูรายละเอียด
                         </Button>
+                        {isAdmin && billing.status !== 'paid' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onMarkAsPaid(billing.id)}
+                          >
+                            ทำเครื่องหมายว่าชำระแล้ว
+                          </Button>
+                        )}
+                        {!isAdmin && billing.status !== 'paid' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => onPayClick(billing)}
+                          >
+                            ชำระเงิน
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

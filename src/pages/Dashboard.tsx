@@ -68,7 +68,9 @@ export default function Dashboard() {
                   alt={user.name} 
                 />
                 <AvatarFallback>
-                  {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  {user?.name
+                    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+                    : 'UN'}
                 </AvatarFallback>
               </Avatar>
               <div>

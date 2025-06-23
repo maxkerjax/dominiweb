@@ -40,7 +40,7 @@ export const LoginForm = () => {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      const res = await axios.post("https://stripeapi-76to.onrender.com/server/create-user", data); 
+      const res = await axios.post("https://stripeapi-76to.onrender.com/server/loginUser", data); 
       const token = res.data.token;
       const user = res.data.user;
 
@@ -49,7 +49,7 @@ export const LoginForm = () => {
       localStorage.setItem("user", JSON.stringify(user));
 
       toast.success("เข้าสู่ระบบสำเร็จ!");
-      navigate("/dashboard"); // ✅ เปลี่ยนเส้นทางตามต้องการ
+      navigate("/dashboard"); 
     } catch (err: any) {
       console.error("Login failed:", err);
       toast.error(err?.response?.data?.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");

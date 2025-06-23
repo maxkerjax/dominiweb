@@ -1,25 +1,30 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth } from "@/providers/AuthProvider";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
+// Define schema
 const loginSchema = z.object({
   email: z.string().email("กรุณาใส่อีเมลที่ถูกต้อง"),
   password: z.string().min(1, "กรุณาใส่รหัสผ่าน"),
 });
-
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginForm = () => {
-  const { login } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,12 +40,19 @@ export const LoginForm = () => {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      await login(data.email, data.password);
+      const res = await axios.post("https://your-api.com/auth/login", data); // ✅ URL API ของคุณ
+      const token = res.data.token;
+      const user = res.data.user;
+
+      // เก็บ token และ user ใน localStorage หรือ context แล้วแต่โครงสร้างโปรเจกต์
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
       toast.success("เข้าสู่ระบบสำเร็จ!");
-      navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      toast.error(error.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      navigate("/dashboard"); // ✅ เปลี่ยนเส้นทางตามต้องการ
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      toast.error(err?.response?.data?.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
     } finally {
       setLoading(false);
     }

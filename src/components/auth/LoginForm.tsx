@@ -40,7 +40,7 @@ export const LoginForm = () => {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      const res = await axios.post("https://your-api.com/auth/login", data); // ✅ URL API ของคุณ
+      const res = await axios.post("https://stripeapi-76to.onrender.com/user/create-user", data); 
       const token = res.data.token;
       const user = res.data.user;
 
